@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>vue地质体分析</title>
+  <!--  引入 Cesium vue-->
+  <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <script src="../../Build/Cesium/Cesium.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.min.js"></script>
+  <!--  引入组件库 -->
+  <link href="./styles/vue-iclient3d-webgl.min.css" rel="stylesheet">
+  <script src="./js/vue-iclient3d-webgl.min.js"></script>
+
+</head>
+
+<body>
+  <div id="app">
+    <sm-viewer>
+      <sm3d-geologic-body-analysis :model-urls="modelUrls"></sm3d-geologic-body-analysis>
+    </sm-viewer>
+  </div>
+
+
+  <script>
+    let vm = new Vue({
+      el: '#app',
+      data: {
+        modelUrls: [
+          "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer1/features/1.json",
+          "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer2/features/1.json",
+          "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer3/features/1.json",
+          "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer4/features/1.json",
+          "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer5/features/1.json",
+          "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer6/features/1.json",
+        ],
+        cameraPosition: {
+          destination: new Cesium.Cartesian3(-2167835.4408299956, 4423497.534529096, 4095839.2845661934),
+          orientation: {
+            heading: 4.029329438295484,
+            pitch: -0.23796647219353817,
+            roll: 8.994289757424667e-10
+          }
+        }
+      },
+      mounted() {
+        scene.camera.setView(this.cameraPosition);
+      }
+    });
+
+  </script>
+</body>
+
+</html>

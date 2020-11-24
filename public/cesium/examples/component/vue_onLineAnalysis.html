@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>vue贴线分析</title>
+  <!--  引入 Cesium vue-->
+  <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <script src="../../Build/Cesium/Cesium.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.min.js"></script>
+  <!--  引入组件库 -->
+  <link href="./styles/vue-iclient3d-webgl.min.css" rel="stylesheet">
+  <script src="./js/vue-iclient3d-webgl.min.js"></script>
+
+</head>
+
+<body>
+  <div id="app">
+    <sm-viewer :s3m-scps="scps">
+      <sm3d-on-line-analysis></sm3d-on-line-analysis>
+    </sm-viewer>
+  </div>
+
+
+  <script>
+    let vm = new Vue({
+      el: '#app',
+      data: {
+        cameraPosition: {
+          destination: new Cesium.Cartesian3(
+            -2095120.8195698452,
+            4492050.236234234,
+            4014691.2770372364
+          ),
+          orientation: {
+            heading: 1.0525528821913364,
+            pitch: -0.5403802934874635,
+            roll: 1.616484723854228e-12
+          }
+        },
+        scps: [{
+            url: URL_CONFIG.SCENE_GTC_HILL,
+            options: {
+              name: "hill"
+            }
+          },
+          {
+            url: URL_CONFIG.SCENE_GTC_UOUTSIDE,
+            options: {
+              name: "u外部"
+            }
+          },
+          {
+            url: URL_CONFIG.SCENE_GTC_UINSIDE,
+            options: {
+              name: "u内部"
+            }
+          },
+          {
+            url: URL_CONFIG.SCENE_GTC_UWINDOW,
+            options: {
+              name: "u窗"
+            }
+          },
+          {
+            url: URL_CONFIG.SCENE_GTC_UNIT9,
+            options: {
+              name: "九号楼@九号楼"
+            }
+          },
+          {
+            url: URL_CONFIG.SCENE_GTC_BUILDIBG,
+            options: {
+              name: "original"
+            }
+          },
+          {
+            url: URL_CONFIG.SCENE_GTC_GROUND,
+            options: {
+              name: "ground"
+            }
+          }
+        ]
+      },
+      mounted() {
+        scene.camera.setView(this.cameraPosition);
+      }
+    });
+
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>交通仿真</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/supermap/SuperMap.Include.js"></script>
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+    <style>
+        html,
+        body,
+        #cesiumContainer {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000000;
+        }
+
+        #loadingOverlay {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            opacity: 0.9;
+            width: 100%;
+            height: 10%;
+            display: none;
+        }
+
+        #loadingOverlay h1 {
+            text-align: center;
+            position: relative;
+            top: 50%;
+            margin-top: -0.5em;
+        }
+
+        .loading #loadingOverlay {
+            display: block;
+        }</style>
+</head>
+
+<body class="loading">
+<div id="cesiumContainer"></div>
+<div id="loadingOverlay">
+    <h1>Loading data...</h1></div>
+
+<div id="toolbar" class="tool-bar param-container">
+    <div class="param-item">
+        <input type="checkbox" id="bubble">
+        <label>显示气泡信息</label>
+    </div>
+    <div class="param-item">
+        <label>气泡最小可见性:</label>
+        <input id="minVisual" type="number" value="10" style="text-align: center">
+    </div>
+    <div class="param-item">
+        <label>气泡最大可见性:</label>
+        <input id="maxVisual" type="number" value="1000" style="text-align: center">
+    </div>
+</div>
+<script>
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer');
+        viewer.imageryLayers.addImageryProvider(new Cesium.BingMapsImageryProvider({
+            url: 'https://dev.virtualearth.net',
+            mapStyle: Cesium.BingMapsStyle.AERIAL,
+            key: URL_CONFIG.BING_MAP_KEY
+        }));
+        viewer.clock.currentTime = Cesium.JulianDate.addSeconds(viewer.clock.currentTime, 0.1, viewer.clock.currentTime);
+        var scene = viewer.scene;
+		scene.shadowMap.darkness = 1.275; //设置第二重烘焙纹理的效果（明暗程度）
+	scene.skyAtmosphere.brightnessShift=0.4;  //修改大气的亮度
+	scene.debugShowFramesPerSecond = true;
+	scene.hdrEnabled = false;
+	scene.sun.show = false;
+	// 01设置环境光的强度-新处理CBD场景
+	scene.lightSource.ambientLightColor = new Cesium.Color(0.65, 0.65, 0.65, 1);
+	// 添加光源
+	var position1 = new Cesium.Cartesian3.fromDegrees(116.261209157595,  39.3042238956531, 480);
+	//光源方向点
+
+	var targetPosition1 = new Cesium.Cartesian3.fromDegrees(116.261209157595, 39.3042238956531,430);
+	var dirLightOptions = {
+		targetPosition: targetPosition1,
+		color: new Cesium.Color(1.0, 1.0, 1.0, 1),
+		intensity: 0.55
+	};
+	directionalLight_1 = new Cesium.DirectionalLight(position1, dirLightOptions);
+	scene.addLightSource(directionalLight_1);
+        var widget = viewer.cesiumWidget;
+        var timeInterval;
+        $('#loadingbar').remove();
+        var promise = scene.open(URL_CONFIG.SCENE_CBD);
+        Cesium.when(promise, function (layer) {
+            scene.camera.setView({
+                destination: new Cesium.Cartesian3.fromDegrees(116.45767224455432, 39.9099165872182, 107.471387926923),
+                orientation: {
+                    heading: 3.770997,
+                    pitch: -0.332010,
+                    roll: 6.283185307179563
+                }
+            });
+            var urls = [ //加载模型信息
+                './data/car/qiche1.s3m',
+                './data/car/qiche2.s3m',
+                './data/car/qiche3.s3m',
+                './data/car/qiche4.s3m',
+            ];
+            var labelAdded = false;
+
+            var Factor = urls.length;
+            var keymap = {};
+            for (var i = 0; i < Factor; i++) {
+                var url = urls[i];
+                keymap[url] = [];
+            }
+            var layer = new Cesium.DynamicLayer3D(scene.context, urls);
+            scene.primitives.add(layer);
+
+            doSqlQuery();
+
+            //查询操作
+            function doSqlQuery() {
+                var getFeatureParam, getFeatureBySQLService, getFeatureBySQLParams;
+
+                getFeatureParam = new SuperMap.REST.FilterParameter({
+                    attributeFilter: "SMID>0"
+                });
+                getFeatureBySQLParams = new SuperMap.REST.GetFeaturesBySQLParameters({
+                    queryParameter: getFeatureParam,
+                    toIndex: 426,
+                    datasetNames: ["CBD车道:" + "车道三维"]
+                });
+                var url = 'http://www.supermapol.com/realspace/services/data-road/rest/data';
+                getFeatureBySQLService = new SuperMap.REST.GetFeaturesBySQLService(url, {
+                    eventListeners: {
+                        "processCompleted": onQueryComplete,
+                        "processFailed": processFailed
+                    }
+                });
+                getFeatureBySQLService.processAsync(getFeatureBySQLParams);
+            }
+
+            //查询成功后动态图层操作
+            function onQueryComplete(queryEventArgs) {
+                var labelEntity = [];
+                var airRoute = queryEventArgs.originResult.features;
+                var startLines = createCarLines(airRoute); //汽车运动路线及对应的position数组
+                var count = startLines.length;
+                var objects = [];
+                var state;
+                var index;
+                for (let i = 0; i < count; i++) {
+                    for (let j = 0; j < Factor; j++) {
+                        let url = urls[j];
+                        let pts = startLines[i];
+                        let len = pts.length;
+                        index = Math.floor(Math.random() * (len - 1));
+                        let half = len / 2;
+                        let dir = true;
+                        if (j == 0) {
+                            index = 0;
+                            dir = true;
+                        }
+                        let point = pts[index];
+                        if (!point) {
+                            continue;
+                        }
+
+                        state = new Cesium.DynamicObjectState({
+                            longitude: point.x,
+                            latitude: point.y,
+                            altitude: point.z,
+                            scale: new Cesium.Cartesian3(1, 1, 1)
+                        });
+                        objects.push({
+                            state: state,
+                            dir: dir,
+                            index: index,
+                            origin: index
+                        });
+                        keymap[url].push(state);
+                    }
+                }
+                var showBubble = false;
+                $("#bubble").on('input', function () {
+                    showBubble = $(this).prop("checked");
+                });
+                //调节最大最小可见距离
+                let near = parseFloat($("#minVisual").val());
+                let far = parseFloat($("#maxVisual").val());
+                var distanceDisplayCondition = new Cesium.DistanceDisplayCondition(near, far);
+                $("#minVisual,#maxVisual").on('input', function () {
+                    let near = parseFloat($("#minVisual").val());
+                    let far = parseFloat($("#maxVisual").val());
+                    if (near >= far) {
+                        return;
+                    }
+                    distanceDisplayCondition.near = near;
+                    distanceDisplayCondition.far = far;
+                });
+
+                if (timeInterval) {
+                    clearInterval(timeInterval);
+                }
+                timeInterval = setInterval(function () {
+                    let m = 0;
+                    for (let i = 0; i < count; i++) {
+                        let pts = startLines[i];
+                        if (pts.length == 0) {
+                            m++;
+                            continue;
+                        }
+                        if (index >= pts.length) {
+                            index = 0;
+                        }
+                        for (j = 0; j < Factor; j++) { //计算动态属性
+                            let url = urls[j];
+                            let obj = objects[(i - m) * Factor + j];
+
+                            let state = obj.state;
+                            let dir = obj.dir;
+                            let point;
+                            if (dir) {
+                                obj.index += 1;
+                                point = pts[obj.index];
+                                if (!point) {
+                                    layer.clearState(url, [i]);
+                                    obj.index = obj.origin;
+                                    point = pts[obj.index];
+                                }
+                            }
+                            state.longitude = point.x;
+                            state.latitude = point.y;
+                            state.altitude = point.z;
+                        }
+                    }
+
+                    for (let key in keymap) {
+                        layer.updateObjectWithModel(key, keymap[key]); //实时更新模型空间属性
+                    }
+
+                    if (!labelAdded) {
+                        for (let key in keymap) {
+                            for (let i = 0; i < keymap[key].length; i++) {
+                                labelEntity[i] = viewer.entities.add({
+                                    position: new Cesium.CallbackProperty(function () {
+                                        return Cesium.Cartesian3.fromDegrees(keymap[key][i]._longitude, keymap[key][i]._latitude, keymap[key][i]._altitude + 5);
+                                    }, false),
+                                    label: {
+                                        show: new Cesium.CallbackProperty(function () {
+                                            return showBubble;
+                                        }, false),
+                                        text: '车辆',
+                                        font: '5px Helvetica',
+                                        fillColor: Cesium.Color.SKYBLUE,
+                                        outlineColor: Cesium.Color.BLACK,
+                                        outlineWidth: 1,
+                                        distanceDisplayCondition: new Cesium.CallbackProperty(function () {
+                                            return distanceDisplayCondition
+                                        }, false),
+                                        style: Cesium.LabelStyle.FILL_AND_OUTLINE
+                                    }
+                                });
+                            }
+                            labelAdded = true;
+                        }
+                    }
+                }, 200);
+                layer.updateInterval = 200;
+
+                $("#loadingOverlay").remove();
+            }
+
+            //车辆路线
+            function createCarLines(routes) {
+                var count = routes.length;
+                var startLines = [];
+                var otherLines = [];
+                var startLine, otherLine;
+                var startPoints = [];
+                for (var i = 0; i < count; i++) {
+                    var line = routes[i];
+                    var point3ds = line.geometry.points;
+                    var isStart = line.fieldValues[12];
+                    if (isStart == 'true') {
+                        startPoints.push(point3ds[0]);
+                        startline = [].concat(point3ds);
+                        startLines.push(startline);
+                    } else {
+                        otherLine = [].concat(point3ds);
+                        otherLines.push(otherLine);
+                    }
+                }
+                var startPoint, endPoint;
+                var allLines = [];
+                if (otherLines.length > 147) {
+                    for (var i = 0; i < startLines.length; i++) {
+                        startline = startLines[i];
+                        var len = startline.length;
+                        endPoint = startline[len - 1];
+                        var sliceIndices = [];
+                        var flag = false;
+                        for (var j = 0; j < otherLines.length; j++) {
+                            otherLine = otherLines[j];
+                            startPoint = otherLine[0];
+                            if (Cesium.Math.equalsEpsilon(startPoint.x, endPoint.x, Cesium.Math.EPSILON5) && Cesium.Math.equalsEpsilon(startPoint.y, endPoint.y, Cesium.Math.EPSILON5) && Cesium.Math.equalsEpsilon(startPoint.z, endPoint.z, Cesium.Math.EPSILON5)) {
+                                flag = true;
+                                line = [].concat(startline).concat(otherLine.slice(1));
+                                allLines.push(line);
+                                sliceIndices.push(j);
+                            }
+                        }
+                        if (!flag) {
+                            allLines.push([].concat(startline));
+                        }
+                        for (var m = 0; m < sliceIndices.length; m++) {
+                            var index = sliceIndices[m];
+                            otherLines.splice(index, 1);
+                        }
+                    }
+                    startLines = [].concat(allLines);
+                    allLines.length = 0;
+                }
+                return startLines;
+
+            }
+
+            function processFailed(queryEventArgs) {
+            }
+
+        }, function () {
+            var title = '加载SCP失败，请检查网络连接状态或者url地址是否正确？';
+            widget.showErrorPanel(title, undefined, e);
+        });
+        //鼠标左键选中小车实现跟踪
+        var pickedObject = null; // 选中的图元
+        var trackedEntity = null; // 被跟踪的Entity
+        var screenSpaceEventHandler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+        screenSpaceEventHandler.setInputAction(function (e) {
+            pickedObject = scene.pick(e.position);
+            if (pickedObject) {
+                var selectedPrimitive = pickedObject.primitive; // 选中的图元
+                var ownerGroup = selectedPrimitive._ownerGroup; // 图元所在的组信息
+                var stateList = ownerGroup.stateList; // 状态信息列表
+                var state = stateList.get(pickedObject.id);
+
+                if (!trackedEntity) {
+                    trackedEntity = viewer.entities.add({
+                        id: 'tracked-entity',
+                        position: state.position,
+                        point: {
+                            pixelSize: 1,
+                            show: true // 不能设为false
+                        },
+                        viewFrom: new Cesium.Cartesian3(-100, -150, 100) // 观察位置的偏移量
+                    });
+                } else {
+                    trackedEntity.position = state.position;
+                }
+                viewer.trackedEntity = trackedEntity;
+            } else {
+                viewer.trackedEntity = null;
+            }
+        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    }
+    if (typeof Cesium !== 'undefined') {
+        window.startupCalled = true;
+        onload(Cesium);
+    }
+</script>
+</body>
+
+</html>

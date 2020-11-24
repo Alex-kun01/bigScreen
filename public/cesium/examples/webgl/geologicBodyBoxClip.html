@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>地质体box裁剪</title>
+    <link href="../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <link href="./css/bootstrap-new.min.css" rel="stylesheet">
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <script src="./js/tooltip.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <script src="./js/bootstrap-select.min.js"></script>
+    <!--    <script type="module" src="./js/load-cesium-es6.js"></script>-->
+    <script type="text/javascript" src="../Build/Cesium/Cesium.js"></script>
+    <style>
+        input[type=range] {
+            width: 180px;
+        }
+    </style>
+</head>
+
+<body>
+<div id="cesiumContainer"></div>
+<div id='toolbar' class="param-container tool-bar">
+    <button type="button" id="clip" class="button black" style="float: right;">裁剪</button>
+    <button type="button" id="clear" class="button black" style="float: right;">清 除</button>
+</div>
+<script>
+
+
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer', {
+            infoBox: false,
+        });
+        var scene = viewer.scene;
+        scene.logarithmicDepthBuffer = true;
+        scene.camera.frustum.near = 0.1;
+        scene.globe.show = false;
+        scene.debugShowFramesPerSecond = true;
+        var pointsArray = [];
+        var solidModelsProfile = new Cesium.SolidModelsProfile(scene);
+
+
+        scene.camera.setView({
+            destination: new Cesium.Cartesian3(-2167835.4408299956, 4423497.534529096, 4095839.2845661934),
+            orientation: {
+                heading: 4.029329438295484,
+                pitch: -0.23796647219353817,
+                roll: 8.994289757424667e-10
+            }
+        });
+
+         var modelUrls = [
+             "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer1/features/1.json",
+             "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer2/features/1.json",
+             "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer3/features/1.json",
+             "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer4/features/1.json",
+             "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer5/features/1.json",
+             "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer6/features/1.json",
+         ];
+
+        //加载地质体
+        showModel();
+
+        function showModel() {
+            var models = [];
+            // 也可以不设置纹理，设置颜色
+            models.push({
+                model: modelUrls[0],
+                color: new Cesium.Color(179 / 255, 179 / 255, 179 / 255, 1)
+            });
+            models.push({
+                model: modelUrls[1],
+                color: new Cesium.Color(94 / 255, 179 / 255, 59 / 255, 1)
+            });
+            models.push({
+                model: modelUrls[2],
+                color: new Cesium.Color(52 / 255, 94 / 255, 35 / 255, 1)
+            });
+            models.push({
+                model: modelUrls[3],
+                color: new Cesium.Color(115 / 255, 115 / 255, 115 / 255, 1)
+            });
+            models.push({
+                model: modelUrls[4],
+                color: new Cesium.Color(171 / 255, 85 / 255, 66 / 255, 1)
+            });
+            models.push({
+                model: modelUrls[5],
+                color: new Cesium.Color(68 / 255, 68 / 255, 68 / 255, 1)
+            });
+
+            solidModelsProfile.addModels(models);
+        }
+
+        //清除剖切结果
+        $('#clear').click(function () {
+            solidModelsProfile.clearProfile();
+            editorBox.editEvt.removeEventListener(editBoxEvt);
+        });
+
+        var geoBox;
+        $("#clip").click(function () {
+            //box裁剪
+            var newDim = boxEntity.box.dimensions.getValue();
+            var position = Cesium.Cartographic.fromCartesian(boxEntity.position.getValue(0));
+            geoBox = new Cesium.GeoBox(newDim.x, newDim.y, newDim.z);
+            geoBox.geoPosition = new Cesium.Point3D(Cesium.Math.toDegrees(position.longitude),
+                Cesium.Math.toDegrees(position.latitude), position.height);
+            solidModelsProfile.addProfileGeometry(geoBox);
+
+            solidModelsProfile.build();
+        });
+
+
+        //box
+        var boxEntity = viewer.entities.add({
+            position: new Cesium.Cartesian3.fromDegrees(115.01865862015738, 39.01237767989015, -3000),
+            box: {
+                dimensions: new Cesium.Cartesian3(22000, 22000, 6000)
+            },
+            show: false
+        });
+        // viewer.entities.removeAll();
+
+        //box编辑
+        var editorBox = new Cesium.BoxEditor(viewer, boxEntity);
+        editorBox.color = Cesium.Color.WHITE.withAlpha(0.0);//设置盒子透明
+        var editBoxEvt = function (e) {
+            var newDim = e.dimensions;
+
+            geoBox.geoWidth = newDim.y;
+            geoBox.geoHeight = newDim.z;
+            geoBox.geoLength = newDim.x;
+            var position = Cesium.Cartographic.fromCartesian(e.position);
+            geoBox.geoPosition = new Cesium.Point3D(Cesium.Math.toDegrees(position.longitude),
+                Cesium.Math.toDegrees(position.latitude), position.height);
+        };
+        editorBox.editEvt.addEventListener(editBoxEvt);
+
+
+    }
+
+    if (typeof Cesium !== 'undefined') {
+        window.startupCalled = true;
+        onload(Cesium);
+    }
+</script>
+</body>
+
+</html>

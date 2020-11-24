@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>通视分析</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <script type="text/javascript" src="./js/jquery.min.js"></script>
+    <script src="./js/config.js"></script>
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+<div id='toolbar' class="param-container tool-bar">
+    <button type="button" id="chooseView" class="button black">选取观察位置</button>
+    <button type="button" id="addPoint" class="button black">添加目标点</button>
+    <button type="button" id="clear" class="button black">清除</button>
+</div>
+
+<script type="text/javascript">
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer');
+        viewer.imageryLayers.addImageryProvider(new Cesium.BingMapsImageryProvider({
+            url : 'https://dev.virtualearth.net',
+            mapStyle : Cesium.BingMapsStyle.AERIAL,
+            key : URL_CONFIG.BING_MAP_KEY
+        }));
+        if(!viewer.scene.pickPositionSupported){
+            alert('不支持深度纹理,通视分析功能无法使用（无法添加观测点目标点）！');
+        }
+        $("#toolbar").show();
+        $('#loadingbar').remove();
+        var scene = viewer.scene;
+        scene.shadowMap.darkness = 1.275; //设置第二重烘焙纹理的效果（明暗程度）
+        scene.skyAtmosphere.brightnessShift=0.4;  //修改大气的亮度
+        scene.debugShowFramesPerSecond = true;
+        scene.hdrEnabled = false;
+        scene.sun.show = false;
+        // 01设置环境光的强度-新处理CBD场景
+        scene.lightSource.ambientLightColor = new Cesium.Color(0.65, 0.65, 0.65, 1);
+        // 添加光源
+        var position1 = new Cesium.Cartesian3.fromDegrees(116.261209157595,  39.3042238956531, 480);
+        //光源方向点
+
+        var targetPosition1 = new Cesium.Cartesian3.fromDegrees(116.261209157595, 39.3042238956531,430);
+        var dirLightOptions = {
+            targetPosition: targetPosition1,
+            color: new Cesium.Color(1.0, 1.0, 1.0, 1),
+            intensity: 0.55
+        };
+        directionalLight_1 = new Cesium.DirectionalLight(position1, dirLightOptions);
+        scene.addLightSource(directionalLight_1);
+        var sightline = new Cesium.Sightline(scene);
+        sightline.couldRemove = false;
+
+        var handlerPoint = new Cesium.DrawHandler(viewer, Cesium.DrawMode.Point);
+        var widget = viewer.cesiumWidget;
+        try{
+            //添加S3M图层
+            var ground1Promise = scene.addS3MTilesLayerByScp(URL_CONFIG.SCP_CBD_GROUND1,{name : 'ground1'});
+            var buildPromise = scene.addS3MTilesLayerByScp(URL_CONFIG.SCP_CBD_BUILD,{name : 'build'});
+            var lakePromise = scene.addS3MTilesLayerByScp(URL_CONFIG.SCP_CBD_LAKE, {name: 'lake'});
+            var treePromise = scene.addS3MTilesLayerByScp(URL_CONFIG.SCP_CBD_TREE, {name: 'tree'});
+            var roadPromise = scene.addS3MTilesLayerByScp(URL_CONFIG.SCP_CBD_ROAD, {name: 'road'});
+            var bridgePromise = scene.addS3MTilesLayerByScp(URL_CONFIG.SCP_CBD_BRIDGE, {name: 'bridge'});
+            var promiseSet = [ground1Promise,buildPromise,lakePromise,treePromise,roadPromise,bridgePromise];
+            Cesium.when.all(promiseSet,function(layer){
+                scene.camera.setView({
+                    destination : new Cesium.Cartesian3.fromDegrees(116.44621857300415,39.899281526734555,216.7793905027196),
+                    orientation : {
+                        heading : 0.41348036210986194,
+                        pitch : -0.13636490404291735,
+                        roll : 6.283185307179563
+                    }
+                });
+                for(var i=0;i<layer.length;i++){
+                    layer[i].selectEnabled = false;
+                }
+                
+                sightline.build();
+            },function(e){
+                if (widget._showRenderLoopErrors) {
+                    var title = '加载SCP失败，请检查网络连接状态或者url地址是否正确？';
+                    widget.showErrorPanel(title, undefined, e);
+                }
+            });
+        }
+        catch(e){
+            if (widget._showRenderLoopErrors) {
+                var title = '渲染时发生错误，已停止渲染。';
+                widget.showErrorPanel(title, undefined, e);
+            }
+        }
+
+        document.getElementById("chooseView").onclick = function() {
+            if(handlerPoint.active) {
+                return;
+            }
+            scene.viewFlag = true;
+            viewer.entities.removeAll();
+            if(sightline.couldRemove) {
+                sightline.removeAllTargetPoint();
+            }
+            handlerPoint.activate();
+        };
+
+        handlerPoint.drawEvt.addEventListener(function(result){
+            var point = result.object;
+            point.show = false;
+            var position = result.object.position;
+
+            //将获取的点的位置转化成经纬度
+            var cartographic = Cesium.Cartographic.fromCartesian(position);
+            var longitude = Cesium.Math.toDegrees(cartographic.longitude);
+            var latitude = Cesium.Math.toDegrees(cartographic.latitude);
+            var height = cartographic.height;
+
+            if(scene.viewFlag) {
+                //设置观察点
+                sightline.viewPosition = [longitude, latitude, height];
+                scene.viewFlag = false;
+            }else {
+                //添加目标点
+                sightline.addTargetPoint({
+                    position : [longitude, latitude, height],
+                    name : "point" + new Date()
+                });
+                sightline.couldRemove = true;
+            }
+        });
+
+        document.getElementById("addPoint").onclick = function() {
+            scene.viewFlag = false;
+            handlerPoint.activate();
+        };
+
+        document.getElementById("clear").onclick = function() {
+            handlerPoint.clear();
+            viewer.entities.removeAll();
+            if(sightline.couldRemove){
+                sightline.removeAllTargetPoint();
+                sightline.couldRemove = false;
+            }
+        }
+
+    }
+    if (typeof Cesium !== 'undefined') {
+        window.startupCalled = true;
+        onload(Cesium);
+    }
+    </script>
+</body>
+</html>

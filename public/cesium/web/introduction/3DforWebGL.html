@@ -1,0 +1,939 @@
+<!--********************************************************************
+* Copyright© 2000 - 2020 SuperMap Software Co.Ltd. All rights reserved.
+*********************************************************************-->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>SuperMap iClient3D for WebGL 开发指南</title>
+    <link rel="shortcut icon" type="image/x-icon" href="../img/favicon.ico" />
+    <link rel="stylesheet" href="../css/develop.css">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=no">
+    <script type="text/javascript" include='isIntroduction,lazyload' src="../js/include.js"></script>
+    <script src=""></script>
+</head>
+
+<body class="hold-transition skin-blue">
+
+    <!--顶部导航-->
+    <header class="header-wrapper main-header icl-header"></header>
+    <script>
+        var identification = {
+            name: "WebGL"
+        };
+        var navigation = {
+            nav: {
+                title: "SuperMap iClient3D for WebGL",
+                path: "../../web/",
+                isLocal: window.isLocal
+            }
+        };
+        utils.loadTemplate(".icl-header", "../apis/header.html", navigation);
+
+    </script>
+    <!--顶部导航 end-->
+
+    <!--内容区-->
+    <div>
+        <div class="row">
+            <!--左侧导航-->
+            <div class="leftnav" role="complementary">
+                <nav class="icl-docs-sidebar hidden-print hidden-xs hidden-sm affix-top">
+                    <ul class="nav icl-docs-sidenav">
+                        <li>
+                            <a href="#Ready">准备</a>
+                            <ul class="nav">
+                                <li>
+                                    <a href="#GetLibs">获取SuperMap iClient3D for WebGL</a>
+                                </li>
+                                <li>
+                                    <a href="#Import">引入</a>
+                                </li>
+                                <li>
+                                    <a href="#Modules">模块化开发</a>
+                                </li>
+                                <!--<li>
+                                    <a href="#ie8">兼容 IE8 浏览器</a>
+                                </li>-->
+                            </ul>
+                        </li>
+                        <li>
+                            <a href="#createMap">创建三维场景</a>
+                            <ul class="nav">
+                                <li>
+                                    <a href="#iServerMap">初始化三维球</a>
+                                </li>
+                                <li>
+                                    <a href="#thirdMap">设置地图风格</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li>
+                            <a href="#multiProjection">添加图层</a>
+                            <ul class="nav">
+                                <li>
+                                    <a href="#addTerrain">添加地形图层</a>
+                                </li>
+                                <li>
+                                    <a href="#addImage">添加影像图层</a>
+                                </li>
+                                <li>
+                                    <a href="#addS3M">添加S3M图层</a>
+                                </li>
+                                <li>
+                                    <a href="#addMVT">添加MVT图层</a>
+                                </li>
+                            </ul>
+                        </li>
+                        <li>
+                            <a href="#SetScene">场景设置</a>
+                            <ul class="nav">
+                                <li>
+                                    <a href="#SetColor">颜色设置</a>
+                                </li>
+                                <li>
+                                    <a href="#SetBloomEffect">泛光效果设置</a>
+                                </li>
+                                <li>
+                                    <a href="#MultiViewer">分屏显示</a>
+                                </li>
+                                <li>
+                                    <a href="#OutPutScene">场景出图</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li>
+                            <a href="#Query">查询</a>
+                            <ul class="nav">
+                                <li>
+                                    <a href="#SpatialQuery">空间查询</a>
+                                </li>
+                                <li>
+                                    <a href="#AttQuery">属性查询</a>
+                                </li>
+                            </ul>
+                        </li>
+                        <li>
+                            <a href="#Measure">量算</a>
+                        </li>
+                        <li>
+                            <a href="#DrawHandler">绘制</a>
+                        </li>
+                        <li>
+                            <a href="#Analysis">三维空间分析</a>
+                            <ul class="nav">
+                                <li>
+                                    <a href="#SightLine">通视分析</a>
+                                </li>
+                                <li>
+                                    <a href="#viewshed3D">可视域分析</a>
+                                </li>
+                                <li>
+                                    <a href="#ShadowQuery">阴影分析</a>
+                                </li>
+                                <li>
+                                    <a href="#SkyLine">天际线分析</a>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <a class="back-to-top" href="#top">
+                        返回顶部
+                    </a>
+                </nav>
+            </div>
+            <!--右侧内容区-->
+            <div class="col-md-9" id="main-content" role="main">
+                <div class="icl-docs-header">
+                    <h1 class="product">SuperMap iClient3D for WebGL</h1>
+                </div>
+                <p class="lead">主要介绍 SuperMap iClient3D for WebGL 的入门用法，详细的接口参数请参考 API 页面。</p>
+
+                <!-- 1 准备 -->
+                <div class="section icl-docs-section">
+                    <h2 id="Ready" class="section-title">准备</h2>
+                    <div class="section section-level-2">
+                        <div class="section section-level-2">
+                            <h3 id="GetLibs" class="section-title">获取 SuperMap iClient3D for WebGL</h3>
+                            <p>开发时需要引入SuperMap iClient3D for WebGL。其中包括必备的CSS 文件和 JS
+                                文件。你可以通过以下几种方式获取：</p>
+                            <!--<h4 id="Leaflet" class="section-title"> Leaflet </h4>-->
+                            <!--<ul>-->
+                                <!--<li>通过<a href="https://leafletjs.com/download.html"> Leaflet 官网</a> 下载 Leaflet.zip</li>-->
+                                <!--<li>在 Leaflet 的<a href="https://github.com/Leaflet/Leaflet"> GitHub </a>上下载</li>-->
+                            <!--</ul>-->
+                            <h4 id="iClientforLeaflet" class="section-title"> SuperMap iClient3D for WebGL </h4>
+                            <ul>
+                                <li>通过<a href="http://support.supermap.com.cn:8090/webgl/download.html">
+                                    SuperMap iClient3D for WebGL 官网 </a>下载最新版本</li>
+                                <!--<li>在 SuperMap iClient for Leaflet 的<a-->
+                                        <!--href="https://github.com/SuperMap/iClient-JavaScript/releases"> GitHub </a>中下载-->
+                                    <!--release 版本</li>-->
+                            <!--</ul>-->
+                        </div>
+                        <!-- 1.2 引入 -->
+                        <div>
+                            <h3 id="Import" class="section-title">引入</h3>
+                            <h4 class="section-title">文件方式引入</h4>
+                            <p>将获取的 SuperMap iClient3D for WebGL 版本解压缩后，在examples文件夹下新建HTML文件，
+                                在文件中通过&lt;script&gt; 标签将Cesium.js文件引入:</p>
+                            <figure class="highlight">
+                                <pre class="javascript">
+                                        <code class="html">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;meta charset=&quot;UTF-8&quot;&gt;
+    &lt;script type="text/javascript" src="../Build/Cesium/Cesium.js"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;/html&gt;</code>
+                                    </pre>
+                            </figure>
+                            <p>同时应该根据需要在 &lt;head&gt; 标签中引入SuperMap iClient3D for WebGL的其他css文件和js文件，如下：</p>
+                            <figure class="highlight">
+                                <pre class="javascript">
+                                        <code class="html">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head>
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    &lt;link href="../Build/Cesium/Widgets/widgets.css" rel="stylesheet"&gt;
+    &lt;link href="./css/pretty.css" rel="stylesheet"&gt;
+    &lt;script src="./js/jquery.min.js"&gt;&lt;/script&gt
+    &lt;script src="./js/config.js"&gt;&lt;/script&gt;
+    &lt;script type="text/javascript" src="../Build/Cesium/Cesium.js"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;/html&gt;</code>
+                                    </pre>
+                            </figure>
+
+                                    </figure>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 1.3 模块化开发 -->
+                        <div>
+                            <h3 id="Modules" class="section-title">模块化开发</h3>
+                            <h4 class="section-title">ES6</h4>
+                            <p>
+                                开发前需使用<a href='#npm'> npm </a>安装依赖，即package.json文件中列出的依赖，然后通过 ES6 的 import 模块加载语法引入相应的模块。
+                            </p>
+                            <p>
+                                <b>&nbsp;&nbsp;部分模块引入</b>
+                            </p>
+                            <figure class="highlight">
+                                <pre class="javascript">
+                                            <code>import {S3MTilesLayer} from '../Build/Cesium/Cesium.js';
+</code>
+                                        </pre>
+                            </figure>
+
+
+                            <!--<h4 class="section-title">打包配置</h4>-->
+                            <!--<p>新版本的SuperMap iClient3D for WebGL 使用了 ES6 语法，因此在打包和压缩的时候应该注意压缩和打包工具对ES6语法的支持。</p>-->
+                            <!--<p>SuperMap iClient3D for WebGL打包用到的工具主要有Gulp和Google Closure Compiler，并利用ant进行构建。 </p>-->
+                            <!--<p>首先需要进行ant和jre的配置。<a href="http://ant.apache.org/">下载ant</a>安装包后解压到拟安装的路径,-->
+                                <!--<a href="https://www.oracle.com/java/technologies/javase-downloads.html">下载jre</a>安装包解压后进行安装 ，然后将两者配置为环境变量。-->
+                                <!--配置完成后可以通过在命令行输入ant -version和java -version来检验其是否配置成功。</p>-->
+                            <!--<p>在本地工程目录下新建一个ant配置文件build.xml并进行基本的配置：</p>-->
+                            <!--<figure class="highlight">-->
+                                <!--<pre class="javascript">-->
+                                            <!--<code>&lt;?xml version="1.0" encoding="UTF-8" ?&gt;-->
+<!--&lt;project name = "WebGLPackage" default = "01pack" baseDir = ".."&gt;-->
+    <!--&lt;property name = "SourceCodeDir" value = "${baseDir}\Source"/&gt;-->
+    <!--&lt;property name = "BuildCesiumDir" value = "${baseDir}\Build\Cesium"/&gt;-->
+    <!--&lt;target&gt;-->
+        <!--...-->
+    <!--&lt;/target&gt;-->
+<!--&lt;/project&gt;</code>-->
+                                <!--</pre>-->
+                            <!--</figure>-->
+                            <!--<p>gulp工具的使用：您从官网获取的SuperMap iClient3D for WebGL包里自带的gulpfile.js文件中已将相应版本的文件打包时所需-->
+                                <!--的gulp工具配置好，且您在配置模块化开发环境时已经安装了项目所需依赖（若未安装，此处须安装，否则不能正常运行），您在使用时只需要根据需要选取gulp task并配置到上一步所创建的buil.xml即可。-->
+                                <!--</p>-->
+                            <!--<figure class="highlight">-->
+                                <!--<pre class = "javascript">-->
+                                    <!--<code>&lt;target name = "gulp"&gt;-->
+    <!--&lt;exec executable = "cmd.exe" dir = "baseDir"&gt;-->
+        <!--&lt;arg line = "/c gulp minify"&gt;-->
+    <!--&lt;/exec&gt;-->
+<!--&lt;target&gt;</code>-->
+                                <!--</pre>-->
+                            <!--</figure>-->
+<!---->
+                            <!--<p>当完成gulp的配置后，为了使代码更加轻量便捷，可以使用Google Closure Compiler对代码进行压缩，其主要语法为：</p>-->
+                            <!--<figure class="highlight">-->
+                                <!--<pre class = "javascript">-->
+                                    <!--<code>java -jar compiler.jar &#45;&#45;js ../Build/Cesium/Cesium.js &#45;&#45;compilation_level SIMPLE_OPTIMIZATIONS &#45;&#45;js_output_file ../Build/Cesium/Cesium-GC.js &#45;&#45;warning_level QUIET</code>-->
+                                <!--</pre>-->
+                            <!--</figure>-->
+                            <!--<p>最后根据需要，在buil.xml文件中进行打包的其他配置，如压缩、命名等。</p>-->
+
+                            <!-- <p>
+                                <b>rollup</b>
+                            </p>
+                            <p>
+                                <b>parcel</b>
+                            </p> -->
+                        </div>
+                        <!-- 1.4 兼容ie8 -->
+
+
+                <!-- 2 创建一幅地图-->
+                    <div class="section icl-docs-section">
+                        <h2 id="createMap" class="section-title">创建三维场景</h2>
+                        <p class="lead"></p>
+                        <div class="section section-level-2">
+                            <!-- 2.1 SuperMap iServer 发布的地图 -->
+                            <h3 id="iServerMap" class="section-title">初始化三维球</h3>
+                            <p>在准备章节，已经新建了一个 HTML 页面，在页面中继续添加代码以初始化三维球，如下：</p>
+                            <figure class="highlight">
+                                <pre class="html">
+                                    <code>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head>
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    &lt;link href="../Build/Cesium/Widgets/widgets.css" rel="stylesheet"&gt;
+    &lt;link href="./css/pretty.css" rel="stylesheet"&gt;
+    &lt;script src="./js/jquery.min.js"&gt;&lt;/script&gt
+    &lt;script src="./js/config.js"&gt;&lt;/script&gt;
+    &lt;script type="text/javascript" src="../Build/Cesium/Cesium.js"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id="cesiumContainer"&gt;&lt;/div&gt;
+&lt;script&gt;
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer');
+    }
+&lt;/html&gt;</code>
+                            </pre>
+                        </figure>
+                        <h3 id="thirdMap" class="section-title">设置地图风格</h3>
+                        <p>默认的初始化三维球是Cesium风格的，可以根据需要设置不同的地图风格，例如：在初始化的三维球上叠加<strong>本地图片</strong>作为影像：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>&lt;script&gt;
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer');
+          //使用本地的一张图片初始化地球，建议图片长宽比2:1
+            viewer.imageryLayers.addImageryProvider(new Cesium.SingleTileImageryProvider({
+            url :  './images/worldimage.jpg'
+        }));
+    }</code>
+                            </pre>
+                        </figure>
+                            <p>运行效果</p>
+                            <div style="text-align:center; width:100%;">
+                                <iframe data-src="http://support.supermap.com.cn:8090/webgl/examples/image.html"></iframe>
+                            </div>
+                        <p><strong>引用在线地图：</strong>SuperMap iClient3D for WebGL 对多种互联网地图信息进行了封装，
+                            例如BingMap、天地图等，并分别为其提供了影像添加接口<code>BingMapsImageryProvider</code>和<code>TiandituImageryProvider</code></p>
+                        <p>添加BingMap影像作:</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>&lt;script&gt;
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer');
+            viewer.imageryLayers.addImageryProvider(new Cesium.BingMapsImageryProvider({
+            url : 'https://dev.virtualearth.net',
+            mapStyle : Cesium.BingMapsStyle.AERIAL,
+            key : BING_MAP_KEY //由BingMap官网申请的密钥
+        }));
+    }</code>
+                            </pre>
+                        </figure>
+                        <p>运行效果</p>
+                        <div style="text-align:center; width:100%;">
+                            <iframe data-src="http://support.supermap.com.cn:8090/webgl/examples/bingMap.html"></iframe>
+                        </div>
+
+                        <p>添加天地图作为底图:</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>&lt;script&gt;
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer');
+        var labelImagery = new Cesium.TiandituImageryProvider({
+            mapStyle: Cesium.TiandituMapsStyle.CIA_C,//天地图全球中文注记服务
+            token: TOKEN_TIANDITU //由天地图官网申请的密钥
+        });
+        viewer.imageryLayers.addImageryProvider(labelImagery);
+    }</code>
+                            </pre>
+                        </figure>
+
+                        <!--分割线-->
+
+
+                        <p>运行效果</p>
+                        <div style="text-align:center; width:100%;">
+                            <iframe data-src="http://support.supermap.com.cn:8090/webgl/examples/tianditu.html"></iframe>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- 3 添加图层 -->
+                <div class="section icl-docs-section">
+                    <h2 id="multiProjection" class="section-title">添加图层</h2>
+                    <p class="lead"></p>
+                    <div class="section section-level-2">
+                        <p>SuperMap iClient3D for WebGL 提供多种接口，支持在创建好的三维场景中添加种类丰富的数据图层：</p>
+
+                        <p id="addTerrain" ><strong>添加地形图层：</strong></p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                            <code>terrainProvider : new Cesium.CesiumTerrainProvider({
+    url : TEST_TERRAIN, //地形服务的地址
+    isSct : true //地形服务源自SuperMap iServer发布时需设置isSct为true
+})</code>
+                            </pre>
+                        </figure>
+
+                        <p id="addImage"><strong>添加影像图层：</strong></p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                            <code> var layer = new Cesium.SuperMapImageryProvider({
+    url : TEST_IMG  //影像服务的地址
+});
+var imgLayer = viewer.imageryLayers.addImageryProvider（layer）</code>
+                            </pre>
+                        </figure>
+
+                        <p id="addS3M"><strong>添加S3M图层：</strong>对于在SuperMap iServer上发布的S3M服务，可以通过以下两种方式打开。</p>
+                        <p>(1).通过open接口将整个场景打开，这种方法简单易操作且不易出现遗漏图层的情况</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                            <code>var scene = viewer.scene;
+var promise = scene.open("http://localhost:8090/iserver/services/3D-test/rest/realspace");  //url为在SuperMap iServer上发布的服务地址</code>
+                            </pre>
+                        </figure>
+                        <p>(2).通过<code>addS3MTilesLayerByScp</code>接口进行添加，该方式的优势是，可以根据自己的需要选择部分图层添加到场景中，提高加载性能，但需要加载多图层的整个场景时，不如scene.open方便。</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>var promise = scene.addS3MTilesLayerByScp('http://localhost:8090/iserver/services/3D-test/rest/realspace/datas/zj/config',
+    {
+        name : "base",
+        cacheKey: "123456"  //三维缓存密钥，由SuperMap iServer设置和获取
+    });
+promise.then(function(layer){
+    layer.visible = true;
+});</code>
+                            </pre>
+                        </figure>
+
+                        <p id="addMVT"><strong>添加MVT图层：</strong>在SuperMap桌面产品中将地图生成好的矢量瓦片地图通过SuperMap iServer发布成矢量瓦片或三维服务后，
+                            在WebGL中利用接口addVectorTilesMap将MVT图层服务添加到场景中。</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>var mvtMap = scene.addVectorTilesMap({
+    url: url,  //MVT的服务地址
+    canvasWidth: 512,
+    name: 'testMVT',
+    viewer: viewer
+});</code>
+                            </pre>
+                        </figure>
+
+
+
+                    </div>
+                </div>
+
+
+                <!-- 4 场景风格 -->
+                <div class="section icl-docs-section">
+                    <h2 id="SetScene" class="section-title">场景设置</h2>
+                    <p>SuperMap iClient3D for WebGL提供了多种接口，方便用户对场景进行个性化设置。</p>
+                    <div class="section section-level-2">
+                        <h3 id="SetColor" class="section-title">颜色设置</h3>
+                        <p>SuperMap iClient3D for WebGL支持对场景的颜色进行设置：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>viewer.scene.colorCorrection.show = true;
+viewer.scene.colorCorrection.saturation = $("#saturation").val();
+viewer.scene.colorCorrection.brightness = $("#brightness").val();
+viewer.scene.colorCorrection.contrast = $("#contrast").val();
+viewer.scene.colorCorrection.hue = $("#hue").val();
+    //颜色校正开关
+$("#colorCorrectionShow").on("input change", function() {
+viewer.scene.colorCorrection.show = this.checked;
+});
+    //调节饱和度
+$("#saturation").on("input change", function() {
+	viewer.scene.colorCorrection.saturation = this.value;
+});
+    //调节亮度
+$("#brightness").on("input change", function() {
+viewer.scene.colorCorrection.brightness = this.value;
+});
+    //调节对比度
+$("#contrast").on("input change", function() {
+viewer.scene.colorCorrection.contrast = this.value;
+});
+    //调节色调
+$("#hue").on("input change", function() {
+viewer.scene.colorCorrection.hue = this.value;
+});</code>
+                            </pre>
+                        </figure>
+                    </div>
+
+                    <div class="section section-level-2">
+                        <h3 id="SetBloomEffect" class="section-title">泛光效果设置</h3>
+                    <p>SuperMap iClient3D for WebGL支持在场景中开启泛光，并支持对泛光效果进行设置</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>//泛光效果开关
+viewer.scene.bloomEffect.show = this.checked;
+//调节亮度阈值
+$("#bloom-threshold").on("input change", function() {
+    viewer.scene.bloomEffect.threshold = parseFloat(this.value);
+});
+//调节泛光强度
+$("#bloom-intensity").on("input change", function() {
+viewer.scene.bloomEffect.bloomIntensity = parseFloat(this.value);
+});</code>
+                            </pre>
+                        </figure>
+                    </div>
+
+                    <div class="section section-level-2">
+                        <h3 id="MultiViewer" class="section-title">分屏显示</h3>
+                        <p>支持对场景进行分屏显示，在不同的视口中对场景中的数据进行不同的操作，目前SuperMap iClient3D for WebGL支持
+                        设置“NONE”、“HORIZONTAL”、“TRIPLE”、“VERTICAL”、“VerticalTrisection”和“QUAD”等6种模式。</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>scene.multiViewportMode = Cesium.MultiViewportMode[value];</code>
+                            </pre>
+                        </figure>
+                    </div>
+                    <div class="section section-level-2">
+                        <h3 id="OutPutScene" class="section-title">场景出图</h3>
+                        <p>SuperMap iClient3D for WebGL支持在浏览器中将指定场景的某一角度作为图片保存至本地。具体方法为：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>//根据图片生成画布
+    function convertImageToCanvas(image) {
+        var canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        canvas.getContext("2d").drawImage(image, 0, 0);
+        return canvas;
+    }；
+//将图片保存至本地
+    function download(base64data) {
+        var image = new Image();
+        image.src = base64data;
+        image.onload = function() {
+            var canvas = convertImageToCanvas(image);
+            url = canvas.toDataURL("image/jpeg");
+            var a = document.createElement('a');
+            var event = new MouseEvent('click');
+            a.download = (new Date()).getTime() + ".jpg"; // 指定下载图片的名称
+            a.href = url;
+            a.dispatchEvent(event); // 触发超链接的点击事件
+        }
+    } </code>
+                            </pre>
+                        </figure>
+                    </div>
+
+                </div>
+
+                <!-- 5 查询-->
+                <div class="section icl-docs-section">
+                    <h2 id="Query" class="section-title">查询</h2>
+                    <p class="lead"></p>
+                    <div class="section section-level-2">
+                        <h3 id="SpatialQuery" class="section-title">空间查询</h3>
+                        <p>SuperMap iClient3D for WebGL提供了丰富的接口，支持场景模型的空间位置信息查询和GPU空间查询等功能。</p>
+                        <p><strong>空间位置信息查询:</strong>实时获取鼠标点击位置的空间信息。</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>var handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+
+    //设置鼠标左键单击回调事件
+    handler.setInputAction(function(e) {
+        //首先移除之前添加的点
+        viewer.entities.removeAll();
+        //获取点击位置笛卡尔坐标
+        var position = scene.pickPosition(e.position);
+
+        //将笛卡尔坐标转化为经纬度坐标
+        var cartographic = Cesium.Cartographic.fromCartesian(position);
+        var longitude = Cesium.Math.toDegrees(cartographic.longitude);
+        var latitude = Cesium.Math.toDegrees(cartographic.latitude);
+        var height = cartographic.height;
+        if(height < 0) {
+            height = 0;
+        }
+
+        //创建弹出框信息，即时查看获取的位置信息
+        var entity = new Cesium.Entity({
+            name : "位置信息",
+            description : createDescription(Cesium, [longitude, latitude, height])
+        });
+        viewer.selectedEntity = entity;
+
+        //为更直观地展示查询的位置，在点击处添加对应点
+        viewer.entities.add(new Cesium.Entity({
+            point : new Cesium.PointGraphics({
+                color : new Cesium.Color(1, 1, 0),
+                pixelSize : 10,
+                outlineColor : new Cesium.Color(0, 1, 1)
+            }),
+            position : Cesium.Cartesian3.fromDegrees(longitude, latitude , height + 0.5)
+        }));
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);</code>
+                                </pre>
+                        </figure>
+                        <p><strong>GPU空间查询：</strong>在场景中创建查询对象，通过GPU空间分析，获取查询对象与模型或模型子对象的空间关系。目前查询对象支持GeoCone、
+                            GeoBox、GeoCylinder、GeoEllipsoid和GeoSphere等几类。示例代码如下：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                    <code>var geometry = undefined;
+var pos = undefined;
+var mode = Cesium.PositionMode.Intersects
+var spatialQuery = new Cesium.SpatialQuery3D(scene);
+var handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+
+handler.setInputAction(function (evt) {
+    var length = 100;
+    var width = 100;
+    var height = 100;
+    // 获取鼠标点击的笛卡尔坐标
+    var cartesian = scene.pickPosition(evt.position);
+    var cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+    pos = new Cesium.Point3D(Cesium.Math.toDegrees(cartographic.longitude), Cesium.Math.toDegrees(cartographic.latitude), cartographic.height);
+    geometry = new Cesium.GeoBox(length, width, height);
+    geometry.geoPosition = pos;
+    spatialQuery.geometry = geometry;
+    spatialQuery.positionMode = mode;
+    spatialQuery.layers = layerSelect;
+    spatialQuery.outlineColor = Cesium.Color.CORNFLOWERBLUE;
+    spatialQuery.fillStyle = Cesium.FillStyle.Fill_And_WireFrame
+
+    spatialQuery.build();
+    tooltip.setVisible(false);
+    handler.removeInputAction(Cesium.ScreenSpaceEventType.MOUSE_MOVE)  //移除鼠标移动事件监听
+}, Cesium.ScreenSpaceEventType.LEFT_CLICK);</code>
+                            </pre>
+                        </figure>
+                        <p>运行效果</p>
+                        <div style="text-align:center; width:100%;">
+                            <iframe data-src="http://support.supermap.com.cn:8090/webgl/examples/spatialQuery3D.html"></iframe>
+                        </div>
+                    </div>
+
+                    <p class="lead"></p>
+                    <div class="section section-level-2">
+                        <h3 id="AttQuery" class="section-title">属性查询</h3>
+                        <p>属性查询是指在场景中对S3M模型的图层或对象属性进行查询</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                    <code>function doSqlQuery(SQL) {
+    var getFeatureParam;
+    getFeatureParam = new SuperMap.REST.FilterParameter({
+        attributeFilter: SQL //SQL为查询条件
+});</code>
+                            </pre>
+                        </figure>
+                    </div>
+                </div>
+                <!--6 量算-->
+                <div class="section icl-docs-section">
+                    <h2 id="Measure" class="section-title">量算</h2>
+                    <p>SuperMap iClient3D for WebGL提供了量算功能，支持在前端对地形或S3M模型进行距离、面积和高差等指标的实时量算，
+                        并支持贴地距离和贴地面积的量算。</p>
+                    <P>下列代码展示距离量算的方法:</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>var handlerDis;
+//初始化测量距离
+    handlerDis = new Cesium.MeasureHandler(viewer, Cesium.MeasureMode.Distance, clampMode);
+//注册测距功能事件
+    handlerDis.measureEvt.addEventListener(function (result) {
+    var dis = Number(result.distance);
+    var selOptV = $("#selOpt").val();
+    var positions = result.positions;
+    if (selOptV == 3 || selOptV == 4) {
+        dis = Number(calcClampDistance(positions));
+    }
+    var distance = dis > 1000 ? (dis / 1000).toFixed(2) + 'km' : dis.toFixed(2) + 'm';
+    handlerDis.disLabel.text = '距离:' + distance;
+});</code>
+                            </pre>
+                        </figure>
+                    <p>运行效果</p>
+                    <div style="text-align:center; width:100%;">
+                        <iframe data-src="http://support.supermap.com.cn:8090/webgl/examples/measureHandler.html"></iframe>
+                    </div>
+                </div>
+
+
+                <div class="section icl-docs-section">
+                    <h2 id="DrawHandler" class="section-title">绘制</h2>
+                    <p>SuperMap iClient3D for WebGL支持在前端实时进行点、线、面的绘制。</p>
+                    <p>下列代码展示在前端绘制线的方法：</p>
+                    <figure class="highlight">
+                            <pre class="javascript">
+                                <code>var handlerLine = new Cesium.DrawHandler(viewer,Cesium.DrawMode.Line);
+handlerLine.activeEvt.addEventListener(function(isActive){
+    if(isActive == true){
+        viewer.enableCursorStyle = false;
+        viewer._element.style.cursor = '';
+        $('body').removeClass('drawCur').addClass('drawCur');
+    }
+    else{
+        viewer.enableCursorStyle = true;
+        $('body').removeClass('drawCur');
+    }
+});
+handlerLine.movingEvt.addEventListener(function(windowPosition){
+    if(handlerLine.isDrawing){
+        tooltip.showAt(windowPosition,'&lt;p&gt;左键点击确定折线中间点&lt;/p&gt;&lt;p&gt;右键单击结束绘制&lt;/p&gt;');
+    }
+    else{
+        tooltip.showAt(windowPosition,'&lt;p&gt;点击绘制第一个点&lt;/p&gt;');
+    }
+});
+handlerLine.drawEvt.addEventListener(function(result){
+    tooltip.setVisible(false);
+});</code>
+                            </pre>
+                    </figure>
+                </div>
+<!--三维空间分析-->
+                <div class="section icl-docs-section">
+                    <h2 id="Analysis" class="section-title">三维空间分析</h2>
+                    <p>SuperMap iClient3D for WebGL支持对三维场景进行一系列的空间分析。</p>
+                    <p class="lead"></p>
+                    <div class="section section-level-2">
+                        <h3 id="SightLine" class="section-title">通视分析</h3>
+                        <p>通视分析是指对场景中的指定两个点之间的通视性进行分析，具体步骤如下：</p>
+                        <p>(1).打开三维场景或添加三维图层，此步骤可参考<a href="multiProjection">“添加图层”</a>中的"叠加S3M图层。</p>
+                        <p>(2).将获取的点位坐标转为经纬度坐标，进行通视分析。</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>var cartographic = Cesium.Cartographic.fromCartesian(position);
+var longitude = Cesium.Math.toDegrees(cartographic.longitude);
+var latitude = Cesium.Math.toDegrees(cartographic.latitude);
+var height = cartographic.height;</code>
+                            </pre>
+                        </figure>
+                        <p>(3).添加观察点和目标点，进行通视分析。</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>//设置观察点
+sightline.viewPosition = [longitude, latitude, height];</code>
+                                </pre>
+                        </figure>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>//添加目标点
+sightline.addTargetPoint({
+    position : [longitude, latitude, height],
+    name : "point" + new Date()
+});</code>
+                            </pre>
+                        </figure>
+                    </div>
+                    <p class="lead"></p>
+                    <div class="section section-level-2">
+                        <h3 id="viewshed3D" class="section-title">可视域分析</h3>
+                        <p>可视域分析是指在三维场景中，基于指定观察点，对一定视域内对象的可见性进行分析。主要步骤有：</p>
+                        <p>(1).打开三维场景。</p>
+                        <p>(2).创建可视域分析对象，并指定可视区域和不可视区域的显示样式：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>var viewshed3D = new Cesium.ViewShed3D(scene);
+var colorStr1 = viewshed3D.visibleAreaColor.toCssColorString();
+var colorStr2 = viewshed3D.hiddenAreaColor.toCssColorString();
+$("#colorPicker1").spectrum({
+    color: colorStr1,
+    showPalette: true,
+    showAlpha: true,
+    localStorageKey: "spectrum.demo",
+    palette: palette
+});
+$('#colorPicker2').spectrum({
+    color: colorStr2,
+    showPalette: true,
+    showAlpha: true,
+    localStorageKey: "spectrum.demo",
+    palette: palette
+});</code>
+                            </pre>
+                        </figure>
+                        <p>(3).设置视口位置：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>var viewPosition;
+viewshed3D.viewPosition = [longitude, latitude, height];</code>
+                            </pre>
+                        </figure>
+                        <p>(4).以观察者位置（视口位置点）为球心，在场景中拾取一个点，将以观察者位置与该点的连线为半径绘制三维的可视域：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>//计算该点与视口位置点坐标的距离
+var distance = Cesium.Cartesian3.distance(viewPosition, last);
+if (distance > 0) {
+    // 将鼠标当前点坐标转化成经纬度
+    var cartographic = Cesium.Cartographic.fromCartesian(last);
+    var longitude = Cesium.Math.toDegrees(cartographic.longitude);
+    var latitude = Cesium.Math.toDegrees(cartographic.latitude);
+    var height = cartographic.height;
+    // 通过该点设置可视域分析对象的距离及方向
+    viewshed3D.setDistDirByPoint([longitude, latitude, height]);
+}</code>
+                            </pre>
+                        </figure>
+                        <p>(5).进行可视域分析：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>viewshed3D.build()；</code>
+                            </pre>
+                        </figure>
+                    </div>
+                    <p class="lead"></p>
+                    <div class="section section-level-2">
+                        <h3 id="ShadowQuery" class="section-title">阴影分析</h3>
+                        <p>阴影分析是指对场景中指定区域在指定时间段内的阴影率进行分析。主要步骤有：</p>
+                        <p>(1).打开三维场景。值得注意的是在创建Viewer时，应将阴影开启，确保阴影可用：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>var viewer = new Cesium.Viewer('cesiumContainer', {
+    shadows : true
+});</code>
+                                </pre>
+                        </figure>
+                        <p>(2).创建创建阴影查询对象，并设置图层的阴影模式：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>//创建创建阴影查询对象
+var shadowQuery = new Cesium.ShadowQueryPoints(scene);
+//设置图层的阴影模式
+layers[0].shadowType = 2; //2表示图层上的所有模型都产生阴影
+layers[1].shadowType = 2;</code>
+                                </pre>
+                        </figure>
+                        <p>(3).绘制阴影分析区域：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>var handlerPolygon = new Cesium.DrawHandler(viewer,Cesium.DrawMode.Polygon,0);
+handlerPolygon.activeEvt.addEventListener(function(isActive){
+    if(isActive == true){
+    viewer.enableCursorStyle = false;
+    viewer._element.style.cursor = '';
+    $('body').removeClass('drawCur').addClass('drawCur');
+    }
+    else{
+    viewer.enableCursorStyle = true;
+    $('body').removeClass('drawCur');
+    }
+});</code>
+                                </pre>
+                        </figure>
+                        <p>(4).进行阴影分析：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>
+                                    </code>
+                                </pre>
+                        </figure>
+                        <p>(5).阴影分析完成后，还可以获取分析区域内空间位置上的阴影率：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>var shadowRadio=shadowQuery.getShadowRadio(cartographic);</code>
+                                </pre>
+                        </figure>
+                        <p>(6).执行阴影分析：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>shadowQuery.build();</code>
+                                </pre>
+                        </figure>
+                    </div>
+
+                    <p class="lead"></p>
+                    <div class="section section-level-2">
+                        <h3 id="SkyLine" class="section-title">天际线分析</h3>
+                        <p>天际线分析是指对三维场景的天际线进行绘制和分析。主要步骤有：</p>
+                        <p>(1).打开三维场景。</p>
+                        <p>(2).创建天际线分析对象：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>var skyline = new Cesium.Skyline(scene);</code>
+                                </pre>
+                        </figure>
+                        <p>(3).为使结果直观，将当前相机位置设置为天际线分析的视口：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code> //天际线分析的视口位置设置成当前相机位置
+skyline.viewPosition = [longitude, latitude, height];
+//设置俯仰和方向
+skyline.pitch = Cesium.Math.toDegrees(scene.camera.pitch);
+skyline.direction = Cesium.Math.toDegrees(scene.camera.heading);
+skyline.radius = 10000; // 设置天际线分析半径，单位：米
+</code>
+                                </pre>
+                        </figure>
+                        <p>(4).执行天际线分析：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>skyline.build();</code>
+                                </pre>
+                        </figure>
+                        <p>(5).提取二维天际线：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>var object = skyline.getSkyline2D();</code>
+                                </pre>
+                        </figure>
+                        <p>(6).此外，SuperMap iClient3D for WebGL还支持绘制限高体以辅助规划和建设部门的决策。
+                            限高体的含义是在当前视口下，为保持当前的天际线不变，在指定区域内修建的建筑高度不能超过该限高体的高度，其绘制方法如下：</p>
+                        <figure class="highlight">
+                            <pre class="javascript">
+                                <code>skyline.addLimitbody({
+        position: arr,
+        name: "limitBody"
+    });</code>
+                                </pre>
+                        </figure>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+
+
+
+    <!--内容区 end-->
+    <!--footer-->
+    <footer class="main-footer icl-footer"></footer>
+    <script>
+        utils.loadTemplate(".icl-footer", "../template/footer.html", navigation);
+
+    </script>
+    <!--footer end-->
+
+    <script type="text/javascript" src="../js/common.js"></script>
+    <script>
+        var myLazyLoad = new LazyLoad({
+            elements_selector: "iframe"
+        });
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>地质体爆炸</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <link href="./css/bootstrap-new.min.css" rel="stylesheet">
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <script src="./js/tooltip.js"></script>
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+    <style>
+        #toolbar {
+            margin: 43px 0 0 43px;
+            width: 182px;
+            background: rgba(42, 42, 42, 1);
+            opacity: 0.9;
+            border-radius: 4px;
+            padding-top: 12px;
+            cursor: auto;
+        }
+
+        .dzt-operate {
+            margin: 14px 0 11px 0px;
+        }
+
+        .btn {
+            background: #444;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="cesiumContainer"></div>
+    <div id='loadingbar' class="spinner">
+        <div class="spinner-container container1">
+            <div class="circle1"></div>
+            <div class="circle2"></div>
+            <div class="circle3"></div>
+            <div class="circle4"></div>
+        </div>
+        <div class="spinner-container container2">
+            <div class="circle1"></div>
+            <div class="circle2"></div>
+            <div class="circle3"></div>
+            <div class="circle4"></div>
+        </div>
+        <div class="spinner-container container3">
+            <div class="circle1"></div>
+            <div class="circle2"></div>
+            <div class="circle3"></div>
+            <div class="circle4"></div>
+        </div>
+    </div>
+    <div id="toolbar" class="param-container tool-bar">
+        <div class="dzt-operate">
+            <button id="explode" class="button black" type="button">爆炸</button>
+            <button id="reset" class="button black" type="button">还原</button>
+        </div>
+    </div>
+    <script>
+
+
+        function onload(Cesium) {
+            var viewer = new Cesium.Viewer('cesiumContainer', {
+                infoBox: false,
+            });
+            var scene = viewer.scene;
+            scene.logarithmicDepthBuffer = true;
+            scene.camera.frustum.near = 0.1;
+            scene.globe.show = false;
+
+            scene.camera.setView({
+                destination: new Cesium.Cartesian3(-2167835.4408299956, 4423497.534529096, 4095839.2845661934),
+                orientation: {
+                    heading: 4.029329438295484,
+                    pitch: -0.23796647219353817,
+                    roll: 8.994289757424667e-10
+                }
+            });
+
+            var cells = [
+                './data/model/dizhiti/Layer1.s3m',
+                './data/model/dizhiti/Layer2.s3m',
+                './data/model/dizhiti/Layer3.s3m',
+                './data/model/dizhiti/Layer4.s3m',
+                './data/model/dizhiti/Layer5.s3m',
+                './data/model/dizhiti/Layer6.s3m',
+            ];
+
+            var layer = new Cesium.DynamicLayer3D(scene._context, cells);
+            layer.updataInterval = 500;//动态图层更新时间
+            layer.enableLocationOffset = true;//禁止模型局部偏移
+            scene.primitives.add(layer);
+
+
+            //动态对象的状态设置
+            var states = [];
+            var point = [115.019082651804, 39.0115415990412, 0];
+            var cellState1 = new Cesium.DynamicObjectState({
+                id: 1,
+                longitude: point[0],
+                latitude: point[1],
+                altitude: point[2]
+            });
+
+            var cellState2 = new Cesium.DynamicObjectState({
+                id: 2,
+                longitude: point[0],
+                latitude: point[1],
+                altitude: point[2]
+            });
+
+            var cellState3 = new Cesium.DynamicObjectState({
+                id: 3,
+                longitude: point[0],
+                latitude: point[1],
+                altitude: point[2]
+            });
+            var cellState4 = new Cesium.DynamicObjectState({
+                id: 4,
+                longitude: point[0],
+                latitude: point[1],
+                altitude: point[2]
+            });
+            var cellState5 = new Cesium.DynamicObjectState({
+                id: 5,
+                longitude: point[0],
+                latitude: point[1],
+                altitude: point[2]
+            });
+            var cellState6 = new Cesium.DynamicObjectState({
+                id: 6,
+                longitude: point[0],
+                latitude: point[1],
+                altitude: point[2]
+            });
+
+            states.push([cellState1]);
+            states.push([cellState2]);
+            states.push([cellState3]);
+            states.push([cellState4]);
+            states.push([cellState5]);
+            states.push([cellState6]);
+
+            //初始化地质体
+            for (var i = 0; i < cells.length; i++) {
+                layer.updateObjectWithModel(cells[i], states[i]);
+            }
+
+            $('#explode').click(function () {
+
+                states[0][0].lockOrientation = true;
+                states[0][0].altitude += 12000;
+                layer.updateObjectWithModel(cells[0], states[0]);
+
+
+                states[1][0].lockOrientation = true;
+                states[1][0].altitude += 8000;
+                layer.updateObjectWithModel(cells[1], states[1]);
+
+
+                states[2][0].lockOrientation = true;
+                states[2][0].altitude += 4000;
+                layer.updateObjectWithModel(cells[2], states[2]);
+
+
+                states[4][0].lockOrientation = true;
+                states[4][0].altitude -= 4000;
+                layer.updateObjectWithModel(cells[4], states[4]);
+
+
+                states[5][0].lockOrientation = true;
+                states[5][0].altitude -= 8000;
+                layer.updateObjectWithModel(cells[5], states[5]);
+
+            });
+
+            $("#reset").click(function () {
+
+                for (var i = 0; i < cells.length; i++) {
+                    states[i][0].lockOrientation = true;
+                    states[i][0].altitude = point[2];
+                    layer.updateObjectWithModel(cells[i], states[i]);
+                }
+            });
+
+            $('#loadingbar').remove();
+        }
+        if (typeof Cesium !== 'undefined') {
+            window.startupCalled = true;
+            onload(Cesium);
+        }
+    </script>
+</body>
+
+</html>

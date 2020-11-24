@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>天际体-GPU空间查询</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/font-awesome.min.css" rel="stylesheet">
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <link href="./css/style.css" rel="stylesheet">
+    <script type="text/javascript" src="./js/jquery.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <script src="./js/bootstrap-select.min.js"></script>
+    <link rel="stylesheet" href="./css/liMarquee.css">
+    <link rel="stylesheet" href="./css/InfoGrid-skyline.css">
+    <script src="./js/jquery.min.3.2.1.js"></script>
+    <script src="./js/js/jquery.liMarquee.js"></script>
+    <script src="./js/tooltip.js"></script>
+    <script src="./js/spectrum.js"></script>
+    <script src="./js/config.js"></script>
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+    <style>
+
+        .drawCur {
+            cursor: url(./images/cur/measure.cur), auto;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 73px;
+            height: 2px;
+            border-radius: 10px; /*这个属性设置使填充进度条时的图形为圆角*/
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            margin-top: -3px;
+            height: 10px;
+            width: 10px;
+        }
+
+        .inputBox {
+            margin-bottom: 15px;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 2px;
+        }
+
+        input[type=text] {
+            width: 62px;
+            height: 28px;
+            background: rgba(51, 51, 51, 1);
+            border: 1px solid rgba(74, 74, 74, 1);
+            border-radius: 4px;
+            margin: 0;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+<div id="cesiumContainer"></div>
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+<button id="bn"
+        style="position : absolute; left : 1%; top : 2%; display : none;background-color: #00a1cb;color:#fff;border: 0">
+    查询
+</button>
+<div id="toolbar" style="position : absolute; left : 1%; top : 2%; display : none;">
+    <div class="titleBox">
+        <div class="titl">属性编辑</div>
+        <span class="close2" aria-hidden="false">×</span>-->
+    </div>
+    <div class="inputBox">
+        <label class="lab">绕x轴旋转(度)</label>
+        <div class="rangeBox">
+            <input type="range" id="pitch" min="0" max="120" step="1" value="0" title="pitch"
+                   data-bind="value: pitch, valueUpdate: 'input'">
+        </div>
+        <input type="text" size="5" data-bind="value: pitch" style="color: #ffffff">
+    </div>
+    <div class="inputBox">
+        <label class="lab">绕Y轴旋转(度)</label>
+        <div class="rangeBox">
+            <input type="range" id="roll" min="0" max="90" step="1.0" value="0" title="roll"
+                   data-bind="value: roll, valueUpdate: 'input'">
+        </div>
+        <input type="text" size="5" data-bind="value: roll" style="color: #ffffff">
+    </div>
+    <div class="inputBox">
+        <label class="lab">绕Z轴旋转(度)</label>
+        <div class="rangeBox">
+            <input type="range" id="heading" min="0" max="90" step="1.0" value="0" title="heading"
+                   data-bind="value: heading, valueUpdate: 'input'">
+        </div>
+        <input type="text" size="5" data-bind="value: heading" style="color: #ffffff">
+    </div>
+    <div class="inputBox">
+        <label class="lab">缩放绘制对象</label>
+        <div class="rangeBox">
+            <input type="range" id="scale" min="0" max="10" step="0.2" value="1" title="距离"
+                   data-bind="value: scale, valueUpdate: 'input'">
+        </div>
+        <input type="text" size="5" data-bind="value: scale" style="color: #ffffff">
+    </div>
+    <div class="inputBox fisrt">
+        <label class="lab " for="positionMode">位置模式：</label>
+        <select id="positionMode" class="selectstyle">
+            <option value="intersects">相交</option>
+            <option value="disjoint">相离</option>
+            <option value="contains">包含</option>
+        </select>
+    </div>
+    <div class="inputBox">
+        <label class="lab" for="geometryType">模型类型：</label>
+        <select id="geometryType" class="selectstyle">
+            <option value="box">立方体</option>
+            <option value="sphere">球体</option>
+            <option value="cone">锥体</option>
+            <option value="cylinder">柱体</option>
+            <option value="ellicpse">椭球</option>
+        </select>
+    </div>
+    <p class="attaintion" style="margin-bottom: 30px;">注：本例中观察者附加高度：1.8 米</p>
+    <div class="inputBox foot">
+        <button type="button" id="clear" class=" btn2" style="  width:56px; right: 210px;">清除</button>
+        <button type="button" id="skyline" class=" btn2" style="  width:56px; right: 148px;">天际线</button>
+        <button type="button" id="skylinebody" class=" btn2 " style="width:66px; right: 78px;">天际体</button>
+        <button type="button" id="AllIDs" class=" btn2 "
+                style="background:rgba(60,141,188,1);margin-right: 0;border: 0 ">查询结果
+        </button>
+    </div>
+</div>
+<div id="flightinfo" style="display: none;">
+</div>
+<script type="text/javascript">
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer',
+            {
+                // timeline: true,
+                infoBox: false,
+            }
+        );
+        var scene = viewer.scene;
+		scene.globe.show =false;
+        scene.shadowMap.darkness = 1.275; //设置第二重烘焙纹理的效果（明暗程度）
+        scene.skyAtmosphere.brightnessShift = 0.4;  //修改大气的亮度
+        scene.debugShowFramesPerSecond = true;
+        scene.hdrEnabled = false;
+        scene.sun.show = false;
+        // 01设置环境光的强度-新处理CBD场景
+        scene.lightSource.ambientLightColor = new Cesium.Color(0.65, 0.65, 0.65, 1);
+        // 添加光源
+        var position1 = new Cesium.Cartesian3.fromDegrees(116.261209157595, 39.3042238956531, 480);
+        //光源方向点
+
+        var targetPosition1 = new Cesium.Cartesian3.fromDegrees(116.261209157595, 39.3042238956531, 430);
+        var dirLightOptions = {
+            targetPosition: targetPosition1,
+            color: new Cesium.Color(1.0, 1.0, 1.0, 1),
+            intensity: 0.55
+        };
+        directionalLight_1 = new Cesium.DirectionalLight(position1, dirLightOptions);
+        scene.addLightSource(directionalLight_1);
+        if (!scene.pickPositionSupported) {
+            alert('不支持深度纹理,可视域分析功能无法使用（无法添加观测）！');
+        }
+        // 先将此标记置为true，不激活鼠标移动事件中对可视域分析对象的操作
+        scene.viewFlag = true;
+        //鼠标样式
+        viewer.enableCursorStyle = false;
+        viewer._element.style.cursor = '';
+        $('body').removeClass('drawCur').addClass('drawCur');
+        var tooltip = createTooltip(viewer._element);
+        var widget = viewer.cesiumWidget;
+
+
+        var skyline = new Cesium.Skyline(scene);//创建天际线分析对象
+        skyline.lineWidth = 3;
+
+        //添加体
+        var s3mInstanceColc;
+        s3mInstanceColc = new Cesium.S3MInstanceCollection(scene._context);
+        scene.primitives.add(s3mInstanceColc);
+
+        try {
+            $("#wrapper").show();
+            var promise = scene.open(URL_CONFIG.SCENE_CBD);
+            Cesium.when(promise, function (layers) {
+                for (var i = 0; i < layers.length; i++) {
+                    layers[i].selectEnabled = false;
+                }
+                //设置相机位置、视角，便于观察场景
+                scene.camera.setView({
+                    destination: Cesium.Cartesian3.fromDegrees(116.42980616287208, 39.905313789383435, 128.85168358897886),
+                    orientation: {
+                        heading: 1.260586371345841,
+                        pitch: -0.0176030403049122,
+                        roll: 0
+                    }
+                });
+
+                for (var i = 0; i < layers.length; i++) {
+                    // layers[i].selectEnabled = false;
+                }
+
+                var layerSelect = [];
+                var layer = scene.layers.find("Building@CBD");
+                layer.selectedColor = new Cesium.Color(1, 0, 0, 0.6);
+                layer.indexedDBSetting.isAttributesSave = true;//保存属性
+                layerSelect.push(layer);
+                var camera = scene.camera;
+                camera.flyCircleLoop = true; // 相机绕点旋转开启循环模式
+                var geometry = undefined;
+                var pos = undefined;
+                var index = 5;    //保存模型类型变量
+                var mode = Cesium.PositionMode.Intersects;
+                var spatialQuery = new Cesium.SpatialQuery3D(scene);
+                spatialQuery.outlineColor = Cesium.Color.CORNFLOWERBLUE;
+                spatialQuery.fillStyle = Cesium.FillStyle.WireFrame;
+
+
+                var handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+
+                // 鼠标提示用户操作，只显示一次
+                handler.setInputAction(function (movement) {
+                    mousePosition = movement.endPosition;
+                    tooltip.showAt(mousePosition, '<p>点击场景后，绘制分析对象</p>');
+                }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+                handler.setInputAction(function (evt) {
+                    // 获取鼠标点击的笛卡尔坐标
+                    var cartesian = scene.pickPosition(evt.position);
+                    var cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+                    pos = new Cesium.Point3D(Cesium.Math.toDegrees(cartographic.longitude), Cesium.Math.toDegrees(cartographic.latitude), cartographic.height);
+                    // 调用当前选择模型类型的函数
+                    changeMode(index);
+
+                    tooltip.setVisible(false);
+                    handler.removeInputAction(Cesium.ScreenSpaceEventType.MOUSE_MOVE)  //移除鼠标移动事件监听
+                }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+                $("#skyline").click(function () {
+                    var cartographic = scene.camera.positionCartographic;
+                    var longitude1 = Cesium.Math.toDegrees(cartographic.longitude);
+                    var latitude1 = Cesium.Math.toDegrees(cartographic.latitude);
+                    var height1 = cartographic.height;
+
+                    //天际线分析的视口位置设置成当前相机位置
+                    skyline.viewPosition = [longitude1, latitude1, height1];
+
+                    //设置俯仰和方向
+                    skyline.radius = 10000;
+                    skyline.pitch = Cesium.Math.toDegrees(scene.camera.pitch);
+                    skyline.direction = Cesium.Math.toDegrees(scene.camera.heading);
+                    skyline.build();
+                });
+
+
+                $('#AllIDs').click(function () {
+                    var div = document.getElementById("flightinfo");
+                    var pObjs = div.childNodes;
+                    if (pObjs !== 0) {
+                        for (var i = pObjs.length - 1; i >= 0; i--) {
+                            div.removeChild(pObjs[i]);
+                        }
+                    }
+                    if (spatialQuery.geometry) {
+                        var QueryResult = spatialQuery.getQueryIDs();
+                        var idsObj = QueryResult[0].ids;
+                        var dataAl = [];
+                        var tidaiSMId = 0;
+
+///////////////////////////////////////////////////////////////////////////////////////取出数据//////////////////////////////////////////////////////////////////////////////////////////////
+
+                        layer.setSelection(idsObj);
+                        for (var i = 0; i < idsObj.length; i++) {
+                            var SMId = idsObj[i];
+                            layer.getAttributesById(SMId).then(function (data) {
+                                dataAl[tidaiSMId] = data;
+                                tidaiSMId++;
+                                if (tidaiSMId === Object.keys(idsObj).length) {
+                                    updataliMarquee(dataAl);
+                                }
+                            });
+                        }
+                        console.log(dataAl);
+                    }
+                });
+
+                $('#clear').click(function () {
+                    document.getElementById("flightinfo").style.display = "none";
+                    layer.setSelection([]);
+                    viewer.entities.removeAll();
+                    s3mInstanceColc.removeCollection("resultSkyline");
+                    skyline.clear();
+                    spatialQuery.clear();
+                });
+
+                $("#positionMode").on("input change", function () {
+                    var index = document.getElementById("positionMode").selectedIndex;
+                    switch (index) {
+                        case 0:
+                            mode = Cesium.PositionMode.Intersects;
+                            break;
+                        case 1:
+                            mode = Cesium.PositionMode.Disjoint;
+                            break;
+                        case 2:
+                            mode = Cesium.PositionMode.Contains;
+                            break;
+                        default:
+                            break;
+                    }
+                    spatialQuery.positionMode = mode;
+                });
+
+                $("#geometryType").on("input change", function () {
+                    index = document.getElementById("geometryType").selectedIndex;
+                    changeMode(index);
+                    if (spatialQuery.geometry) {
+                        spatialQuery.geometry = geometry;
+                    }
+
+                });
+                //模型类型选择函数
+                var changeMode = function (index) {
+                    switch (index) {
+                        case 0: {
+                            var length = 100;
+                            var width = 100;
+                            var height = 100;
+                            geometry = new Cesium.GeoBox(length, width, height);
+                            geometry.geoPosition = pos;
+                        }
+                            break;
+                        case 1: {
+                            var r = 100;
+                            geometry = new Cesium.GeoSphere(r);
+                            geometry.geoPosition = pos;
+                        }
+                            break;
+                        case 2: {
+                            geometry = new Cesium.GeoCone(100, 200);
+                            geometry.geoPosition = pos;
+                        }
+                            break;
+                        case 3: {
+                            geometry = new Cesium.GeoCylinder(100, 100, 200);
+                            geometry.geoPosition = pos;
+                            // spatialQuery.geometry = geometry;
+                        }
+                            break;
+                        case 4: {
+                            geometry = new Cesium.GeoEllipsoid(100.0, 50.0, 50.0);
+                            geometry.geoPosition = pos;
+                        }
+                            break;
+                        case 5: {
+                            //天际线体
+                            var obj = skyline.getSkylineSectorParameter();
+                            var geometrySkylineSectorBodyParameter = {
+                                viewerPoint: obj.viewPos,
+                                line3D: {
+                                    "type": obj.geoLine3D.type,
+                                    "parts": obj.geoLine3D.parts,
+                                    "points": obj.geoLine3D.points
+                                },
+                                height: 0,
+                                lonlat: true
+
+                            };
+                            // var url = "http://localhost:8090/iserver/services/spatialAnalysis-KongJianFenXi/restjsr/spatialanalyst/geometry/3d/skylinesectorbody.json";
+                            var url = "http://www.supermapol.com/realspace/services/spatialAnalysis-data_all/restjsr/spatialanalyst/geometry/3d/skylinesectorbody.json";
+                            queryData = JSON.stringify(geometrySkylineSectorBodyParameter);
+
+                            $.ajax({
+                                url: url,
+                                async: true,
+                                data: queryData,
+                                method: "POST"
+                            }).done(function (data) {
+
+                                $.ajax({
+                                    url: data.newResourceLocation + ".json",
+                                    method: "GET"
+                                }).done(function (data) {
+                                    if (data.geometry === null) {
+                                        return;
+                                    }
+                                    console.log("空间分析完成");
+
+                                    //添加天际线体
+                                    var u8 = new Uint8Array(data.geometry.model);
+                                    var ab = u8.buffer;
+                                    s3mInstanceColc.add("resultSkyline", {
+                                        position: Cesium.Cartesian3.fromDegrees(data.geometry.position.x, data.geometry.position.y, data.geometry.position.z),
+                                        hpr: new Cesium.HeadingPitchRoll(0, 0, 0),
+                                        //scale : new Cesium.Cartesian3(39.37007900000045,39.37007900000045,39.37007900000045),
+                                        color: new Cesium.Color(0, 160 / 255, 233 / 255, 0.5)
+                                        //offset : new Cesium.Cartesian3(0,0,690)
+                                    }, ab);
+
+
+                                    //天际体作为空间查询范围
+                                    geometry = new Cesium.GeoModel3D();
+                                    geometry.geoModel = data.geometry;
+
+                                    spatialQuery.geometry = geometry;
+                                    spatialQuery.positionMode = mode;
+                                    spatialQuery.layers = layerSelect;
+                                    spatialQuery.outlineColor = Cesium.Color.CORNFLOWERBLUE;
+                                    spatialQuery.fillStyle = Cesium.FillStyle.Fill_And_WireFrame;
+                                    spatialQuery.build();
+
+                                })
+                            });
+
+                        }
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                var viewModel = {
+                    scale: 1.0,
+                    pitch: 0.0,
+                    roll: 0.0,
+                    heading: 0.0
+                };
+                Cesium.knockout.track(viewModel);
+                var toolbar = document.getElementById('toolbar');
+                Cesium.knockout.applyBindings(viewModel, toolbar);
+                Cesium.knockout.getObservable(viewModel, 'scale').subscribe(
+                    function (newValue) {
+                        if (spatialQuery.geometry) {
+                            geometry.geoScaleX = parseFloat(newValue);
+                            geometry.geoScaleY = parseFloat(newValue);
+                            geometry.geoScaleZ = parseFloat(newValue);
+                        }
+                    }
+                );
+                Cesium.knockout.getObservable(viewModel, 'pitch').subscribe(
+                    function (newValue) {
+                        if (spatialQuery.geometry) {
+                            geometry.geoRotationY = parseFloat(newValue);
+                        }
+                    }
+                );
+
+                Cesium.knockout.getObservable(viewModel, 'roll').subscribe(
+                    function (newValue) {
+                        if (spatialQuery.geometry) {
+                            geometry.geoRotationX = parseFloat(newValue);
+                        }
+                    }
+                );
+
+                Cesium.knockout.getObservable(viewModel, 'heading').subscribe(
+                    function (newValue) {
+                        if (spatialQuery.geometry) {
+                            geometry.geoRotationZ = parseFloat(newValue);
+                        }
+                    }
+                );
+            }, function (e) {
+                if (widget._showRenderLoopErrors) {
+                    var title = '加载SCP失败，请检查网络连接状态或者url地址是否正确？';
+                    widget.showErrorPanel(title, undefined, e);
+                }
+            });
+
+        } catch (e) {
+            if (widget._showRenderLoopErrors) {
+                var title = '渲染时发生错误，已停止渲染。';
+                widget.showErrorPanel(title, undefined, e);
+            }
+        }
+        //关闭操作框
+        $(".close2").click(function () {
+            $("#toolbar").hide();
+            $("#bn").show()
+        });
+        $("#bn").click(function () {
+            $("#toolbar").show();
+            $("#bn").hide()
+        });
+        $('#loadingbar').remove();
+        $("#toolbar").show();
+
+
+        var flightInfotimer = null;
+        var flightInfoTag = false;
+
+        function updataliMarquee(dataAl) {
+            document.getElementById("flightinfo").style.display = "block";
+            ////////////////////////////////////////////////////////////////////////////////构建数组//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            var splitDataAll = {};
+            var count = 0;
+            var tt = 0;
+            for (var jj = 0; jj < dataAl.length; jj++) {
+                count++;
+                if (count == 10) {
+                    count = 0;
+                    tt++;
+                    splitDataAll["All1" + tt] = new Array();
+                } else {
+                    splitDataAll["All1" + tt] = new Array();
+                }
+            }
+
+            var Seccount = 0;
+            var gg = 0;
+            for (var ii = 0; ii < dataAl.length; ii++) {
+                Seccount++;
+                if (Seccount == 10) {
+                    Seccount = 0;
+                    gg++;
+                    splitDataAll["All1" + gg].push(dataAl[ii]);
+                } else {
+                    splitDataAll["All1" + gg].push(dataAl[ii]);
+                }
+            }
+            console.log(splitDataAll);
+///////////////////////////////////////////////////////////////////////////////////////切割数组//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            var lastsplitDataAll = {};
+            var lastcount = 0;
+            var lastTT = 0;
+            for (var jj = 0; jj < dataAl.length; jj++) {
+                lastcount++;
+                if (lastcount == 10) {
+                    lastcount = 0;
+                    lastTT++;
+                    lastsplitDataAll["All1" + lastTT] = new Array();
+                } else {
+                    lastsplitDataAll["All1" + lastTT] = new Array();
+                }
+            }
+
+            for (var All in splitDataAll) {
+                var infoID = [];
+                var fligheInfo = [];
+                var fligheStart = [];
+                var fligheEnd = [];
+                var fligheStartTime = [];
+                var fligheEndTime = [];
+                for (var arrNum = 0; arrNum < splitDataAll[All].length; arrNum++) {
+                    if (splitDataAll[All][arrNum] !== null) {
+                        infoID[arrNum] = splitDataAll[All][arrNum].SmID;
+                        fligheInfo[arrNum] = splitDataAll[All][arrNum].MODELNAME;
+                        fligheStart[arrNum] = splitDataAll[All][arrNum].SmSdriW;
+                        fligheEnd[arrNum] = splitDataAll[All][arrNum].SmSdriN;
+                        fligheStartTime[arrNum] = splitDataAll[All][arrNum].ALTITUDE;
+                        fligheEndTime[arrNum] = splitDataAll[All][arrNum].VertexCount;
+                    } else {
+                        infoID[arrNum] = 0;
+                        fligheInfo[arrNum] = 0;
+                        fligheStart[arrNum] = 0;
+                        fligheEnd[arrNum] = 0;
+                        fligheStartTime[arrNum] = 0;
+                        fligheEndTime[arrNum] = 0;
+                    }
+                }
+                lastsplitDataAll[All].push(infoID);
+                lastsplitDataAll[All].push(fligheInfo);
+                lastsplitDataAll[All].push(fligheStart);
+                lastsplitDataAll[All].push(fligheEnd);
+                lastsplitDataAll[All].push(fligheStartTime);
+                lastsplitDataAll[All].push(fligheEndTime);
+            }
+            console.log(lastsplitDataAll);
+////////////////////////////////////////////////////////////////////////////////////////////动态展示//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            for (var All in lastsplitDataAll) {
+                var flightinfo = document.getElementById("flightinfo");
+                var flightInfoAll = document.createElement("div");
+                flightInfoAll.setAttribute("id", "flightInfo" + All);
+
+                var infoID = document.createElement("div");
+                infoID.setAttribute("id", "infoID");
+                var createID = document.createElement("div");
+                createID.setAttribute("id", "ceshi");
+                createID.setAttribute("class", "");
+                var createIDP = document.createElement("p");
+                createIDP.innerHTML = "序号";
+                createID.appendChild(createIDP);
+                var createIDPP = document.createElement("p");
+                createIDPP.innerHTML = "ID";
+                createID.appendChild(createIDPP);
+                infoID.appendChild(createID);
+                for (var j = 0; j < lastsplitDataAll[All][0].length; j++) {
+                    var createID = document.createElement("div");
+                    createID.setAttribute("id", "ceshi" + lastsplitDataAll[All][0][j]);
+                    createID.setAttribute("class", "");
+                    var createIDP = document.createElement("p");
+                    createIDP.innerHTML = lastsplitDataAll[All][0][j];
+                    createID.appendChild(createIDP);
+                    infoID.appendChild(createID);
+                }
+                flightInfoAll.appendChild(infoID);
+
+                var fligheInfo = document.createElement("div");
+                fligheInfo.setAttribute("id", "fligheInfo");
+
+                var typeInfo = document.createElement("div");
+                typeInfo.setAttribute("id", "ceshi");
+                typeInfo.setAttribute("class", "");
+                var typeInfoP = document.createElement("p");
+                typeInfoP.innerHTML = "模型名称";
+                typeInfo.appendChild(typeInfoP);
+                var typeofPP = document.createElement("p");
+                typeofPP.innerHTML = "ModelName";
+                typeInfo.appendChild(typeofPP);
+                fligheInfo.appendChild(typeInfo);
+                for (var j = 0; j < lastsplitDataAll[All][1].length; j++) {
+                    var typeInfo = document.createElement("div");
+                    typeInfo.setAttribute("id", "ceshi" + lastsplitDataAll[All][1][j]);
+                    typeInfo.setAttribute("class", "str1 str_wrap");
+                    var typeInfoP = document.createElement("p");
+                    typeInfoP.innerHTML = lastsplitDataAll[All][1][j];
+                    typeInfo.appendChild(typeInfoP);
+//            var typeInfoPP = document.createElement("p");
+//            typeInfoPP.innerHTML = lastsplitDataAll[All][0][j];
+//            typeInfo.appendChild(typeInfoPP);
+                    fligheInfo.appendChild(typeInfo);
+                }
+                flightInfoAll.appendChild(fligheInfo);
+
+                var fligheStart = document.createElement("div");
+                fligheStart.setAttribute("id", "fligheStart");
+
+                var typeID = document.createElement("div");
+                typeID.setAttribute("id", "ceshi");
+                typeID.setAttribute("class", "");
+                var typeIDP = document.createElement("p");
+                typeIDP.innerHTML = "经度";
+                typeID.appendChild(typeIDP);
+                var typeIDPP = document.createElement("p");
+                typeIDPP.innerHTML = "Longtitude";
+                typeID.appendChild(typeIDPP);
+                fligheStart.appendChild(typeID);
+                for (var j = 0; j < lastsplitDataAll[All][2].length; j++) {
+                    var typeID = document.createElement("div");
+                    typeID.setAttribute("id", "ceshi" + lastsplitDataAll[All][2][j]);
+                    typeID.setAttribute("class", "str1 str_wrap");
+                    var typeIDP = document.createElement("p");
+                    typeIDP.innerHTML = lastsplitDataAll[All][2][j];
+                    typeID.appendChild(typeIDP);
+//            var typeIDPP = document.createElement("p");
+//            typeIDPP.innerHTML = lastsplitDataAll[All][2][j];
+//            typeID.appendChild(typeIDPP);
+                    fligheStart.appendChild(typeID);
+                }
+                flightInfoAll.appendChild(fligheStart);
+
+                var fligheEnd = document.createElement("div");
+                fligheEnd.setAttribute("id", "fligheEnd");
+
+                var designtype = document.createElement("div");
+                designtype.setAttribute("id", "ceshi");
+                designtype.setAttribute("class", "");
+                var designtypeP = document.createElement("p");
+                designtypeP.innerHTML = "纬度";
+                designtype.appendChild(designtypeP);
+                var designtypePP = document.createElement("p");
+                designtypePP.innerHTML = "Latitude";
+                designtype.appendChild(designtypePP);
+                fligheEnd.appendChild(designtype);
+                for (var j = 0; j < lastsplitDataAll[All][3].length; j++) {
+                    var designtype = document.createElement("div");
+                    designtype.setAttribute("id", "ceshi" + lastsplitDataAll[All][3][j]);
+                    designtype.setAttribute("class", "str1 str_wrap");
+                    var designtypeP = document.createElement("p");
+                    designtypeP.innerHTML = lastsplitDataAll[All][3][j];
+                    designtype.appendChild(designtypeP);
+//            var designtypePP = document.createElement("p");
+//            designtypePP.innerHTML=lastsplitDataAll[All][3][j];
+//            designtype.appendChild(designtypePP);
+                    fligheEnd.appendChild(designtype);
+                }
+                flightInfoAll.appendChild(fligheEnd);
+
+                var fligheStartTime = document.createElement("div");
+                fligheStartTime.setAttribute("id", "fligheStartTime");
+
+                var volume = document.createElement("div");
+                volume.setAttribute("id", "ceshi");
+                volume.setAttribute("class", "");
+                var volumeP = document.createElement("p");
+                volumeP.innerHTML = "高度";
+                volume.appendChild(volumeP);
+                var volumePP = document.createElement("p");
+                volumePP.innerHTML = "Altitude";
+                volume.appendChild(volumePP);
+                fligheStartTime.appendChild(volume);
+                for (var j = 0; j < lastsplitDataAll[All][4].length; j++) {
+                    var volume = document.createElement("div");
+                    volume.setAttribute("id", "ceshi" + lastsplitDataAll[All][4][j]);
+                    volume.setAttribute("class", "str1 str_wrap");
+                    var volumeP = document.createElement("p");
+                    volumeP.innerHTML = lastsplitDataAll[All][4][j];
+                    volume.appendChild(volumeP);
+                    fligheStartTime.appendChild(volume);
+                }
+                flightInfoAll.appendChild(fligheStartTime);
+
+                var fligheEndTime = document.createElement("div");
+                fligheEndTime.setAttribute("id", "fligheEndTime");
+
+                var pyl = document.createElement("div");
+                pyl.setAttribute("id", "ceshi");
+                pyl.setAttribute("class", "");
+                var pylP = document.createElement("p");
+                pylP.innerHTML = "三角面数";
+                pyl.appendChild(pylP);
+                var pylPP = document.createElement("p");
+                pylPP.innerHTML = "VertexCount";
+                pyl.appendChild(pylPP);
+                fligheEndTime.appendChild(pyl);
+                for (var j = 0; j < lastsplitDataAll[All][5].length; j++) {
+                    var pyl = document.createElement("div");
+                    pyl.setAttribute("id", "ceshi" + lastsplitDataAll[All][4][j]);
+                    pyl.setAttribute("class", "str1 str_wrap");
+                    var pylP = document.createElement("p");
+                    pylP.innerHTML = lastsplitDataAll[All][5][j];
+                    pyl.appendChild(pylP);
+//            var pylPP = document.createElement("p");
+//            pylPP.innerHTML=lastsplitDataAll[All][5][j];
+//            pyl.appendChild(pylPP);
+                    fligheEndTime.appendChild(pyl);
+                }
+                flightInfoAll.appendChild(fligheEndTime);
+
+                flightinfo.appendChild(flightInfoAll);
+            }
+
+            for (var All in lastsplitDataAll) {
+                for (var j = 0; j < lastsplitDataAll[All][0].length; j++) {
+                    document.getElementById("ceshi" + lastsplitDataAll[All][0][j]).style.margin = "5px";
+                    document.getElementById("ceshi" + lastsplitDataAll[All][0][j]).style.padding = "2px 5px";
+                    document.getElementById("ceshi" + lastsplitDataAll[All][0][j]).style.opacity = 0.8;
+                    document.getElementById("ceshi" + lastsplitDataAll[All][0][j]).style.right = "0%";
+                    document.getElementById("ceshi" + lastsplitDataAll[All][0][j]).style.top = "0%";
+                    document.getElementById("ceshi" + lastsplitDataAll[All][0][j]).style.background = " rgb(0, 0, 0)";
+                    document.getElementById("ceshi" + lastsplitDataAll[All][0][j]).style.padding = "4px";
+                    document.getElementById("ceshi" + lastsplitDataAll[All][0][j]).style.color = "#ffffff";
+                    document.getElementById("ceshi" + lastsplitDataAll[All][0][j]).style.height = "30px";
+                    document.getElementById("ceshi" + lastsplitDataAll[All][0][j]).style.width = "100%";
+                    $("ceshi" + lastsplitDataAll[All][0][j]).css("border-radius", "4px");
+                    $("ceshi" + lastsplitDataAll[All][0][j]).css("font-size", "14px");
+                }
+            }
+
+///////////////////////////////////////////////////////////////////////////////////////////动画效果////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            var loadoutTimer = setTimeout(function () {
+                $('.str1').liMarquee({
+                    direction: 'up',
+                    hoverstop: false,
+                    circular: false,
+                    scrollamount: 20
+                });
+                clearTimeout(loadoutTimer);
+            }, 1000);
+
+            if (flightInfotimer != null) {
+                clearInterval(flightInfotimer);
+            }
+
+            var infoStr1 = 'flightInfoAll10';
+            for (var All in lastsplitDataAll) {
+                var infoStr2 = 'flightInfo' + All;
+                document.getElementById(infoStr2).style.display = "none";
+            }
+            document.getElementById(infoStr1).style.display = "block";
+
+            var j = 0;
+            flightInfotimer = setInterval(function () {
+                if (j >= Object.keys(lastsplitDataAll).length) {
+                    j = 0;
+                } else {
+                    if (flightInfoTag == true) {
+                        var infoStr1 = 'flightInfoAll1' + j;
+                        document.getElementById(infoStr1).style.display = "block";
+                        for (var All in lastsplitDataAll) {
+                            var infoStr1 = 'flightInfo' + All;
+                            var tt = 'flightInfoAll1' + j;
+                            if (infoStr1 !== tt) {
+                                document.getElementById(infoStr1).style.display = "none";
+                            }
+                        }
+
+                        flightInfoTag = false;
+                    } else {
+                        var infoStr1 = 'flightInfoAll1' + j;
+                        document.getElementById(infoStr1).style.display = "block";
+                        for (var All in lastsplitDataAll) {
+                            var infoStr2 = 'flightInfo' + All;
+                            var tt = 'flightInfoAll1' + j;
+                            if (infoStr2 !== tt) {
+                                document.getElementById(infoStr2).style.display = "none";
+                            }
+                        }
+                        j++;
+                        flightInfoTag = true;
+                    }
+                }
+            }, 1000);
+
+        }
+    }
+
+    if (typeof Cesium !== 'undefined') {
+        window.startupCalled = true;
+        onload(Cesium);
+    }
+</script>
+</body>
+</html>

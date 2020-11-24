@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+		<title>BOX裁剪(交互绘制)</title>
+		<link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+		<link href="./css/bootstrap.min.css" rel="stylesheet">
+		<link href="./css/pretty.css" rel="stylesheet">
+		<script src="./js/jquery.min.js"></script>
+		<script src="./js/bootstrap.min.js"></script>
+		<script src="./js/bootstrap-select.min.js"></script>
+		<script src="./js/tooltip.js"></script>
+		<script src="./js/slider.js"></script>
+		<script src="./js/config.js"></script>
+		<script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+		<style>
+			input[type=range] {
+				width: 180px;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div id="cesiumContainer"></div>
+		<div id='loadingbar' class="spinner">
+			<div class="spinner-container container1">
+				<div class="circle1"></div>
+				<div class="circle2"></div>
+				<div class="circle3"></div>
+				<div class="circle4"></div>
+			</div>
+			<div class="spinner-container container2">
+				<div class="circle1"></div>
+				<div class="circle2"></div>
+				<div class="circle3"></div>
+				<div class="circle4"></div>
+			</div>
+			<div class="spinner-container container3">
+				<div class="circle1"></div>
+				<div class="circle2"></div>
+				<div class="circle3"></div>
+				<div class="circle4"></div>
+			</div>
+		</div>
+		<div id='toolbar' class="param-container tool-bar">
+			<div>
+				<select style="width: 180px;" id="clipMode">
+					<option value="clip_behind_all_plane">裁剪包围盒内</option>
+					<option value="clip_behind_any_plane">裁剪包围盒外</option>
+				</select>
+				<button type="button" id="clearbox" class="button black" style="float: right;">清 除</button>
+
+			</div>
+		</div>
+
+		<script>
+			function onload(Cesium) {
+				var viewer = new Cesium.Viewer('cesiumContainer', {
+					selectionIndicator: false,
+					infoBox: false
+				});
+				viewer.imageryLayers.addImageryProvider(new Cesium.BingMapsImageryProvider({
+					url: 'https://dev.virtualearth.net',
+					mapStyle: Cesium.BingMapsStyle.AERIAL,
+					key: URL_CONFIG.BING_MAP_KEY
+				}));
+				
+				var scene = viewer.scene;
+				var widget = viewer.cesiumWidget;
+				$('#toolbar').show();
+				$('#loadingbar').remove();
+				try {
+					// 场景添加S3M图层服务
+					var promise = scene.open(URL_CONFIG.SCENE_BIMBUILDING);
+					Cesium.when(promise, function(layers) {
+					   // 精准定位
+						scene.camera.setView({
+							destination: new Cesium.Cartesian3(-2180753.065987198, 4379023.266141494, 4092583.575045952),
+							orientation: {
+								heading: 4.0392222751147955,
+								pitch: 0.010279641987852584,
+								roll: 1.240962888005015e-11
+							}
+						});
+						// 设置裁剪线颜色
+						setAllLayersClipColor();
+						var boxEntity = undefined;
+						var $clipMode = $('#clipMode');
+
+						var tooltip = createTooltip(document.body);					
+						
+						//交互绘制box
+						
+						 var handlerBox = new Cesium.DrawHandler(viewer, Cesium.DrawMode.Box);
+						 var editorBox;
+						 handlerBox.movingEvt.addEventListener(function(windowPosition){
+						 
+						  if (handlerBox.isDrawing) {
+								tooltip.showAt(windowPosition, '<p>点击鼠标左键结束矩形绘制，移动鼠标绘制box高度。</p><p>右键结束绘制.</p>');
+							} else {
+							   tooltip.showAt(windowPosition, '<p>点击鼠标左键，开始绘制矩形作为box底面</p>');
+							}
+						 
+						 });
+						 handlerBox.drawEvt.addEventListener(function(e){
+						     boxEntity = e.object;
+							var newDim = boxEntity.box.dimensions.getValue();
+							var position = boxEntity.position.getValue(0);
+							 var boxOption = {
+								dimensions: newDim,
+								position: position,
+								clipMode: $clipMode.val(),
+								heading: 0
+							};
+							 
+							 //box编辑
+							editorBox = new Cesium.BoxEditor(viewer,boxEntity);
+							
+							editorBox.editEvt.addEventListener(function(e){
+								boxEntity.box.dimensions =  e.dimensions
+								boxEntity.position =e.position;
+								boxEntity.orientation= e.orientation;	
+					
+								setClipBox();
+							});
+							editorBox.distanceDisplayCondition =new Cesium.DistanceDisplayCondition(0,950);
+							editorBox.activate();
+							setAllLayersClipOptions(boxOption);
+							tooltip.setVisible(false);
+							handlerBox.clear();
+							handlerBox.deactivate();
+						 });
+						 handlerBox.activate();
+						 
+						$('#clearbox').click(function() {
+							for(var i = 0, j = layers.length; i < j; i++) {
+								layers[i].clearCustomClipBox();
+							};
+							editorBox.deactivate();
+							viewer.entities.removeAll();
+                            handlerBox.clear();
+							handlerBox.deactivate();
+							handlerBox.activate();		
+
+						});
+	
+						$clipMode.change(function() {
+							setClipBox();
+						});
+
+						function setClipBox() {
+							var clipMode = $clipMode.val();
+							if(typeof(boxEntity)=="undefined")
+							{
+							     return ;
+							}
+							var newDim = boxEntity.box.dimensions.getValue();
+							var position = boxEntity.position.getValue(0);
+
+							var heading = 0;
+							if(typeof(boxEntity.orientation)!="undefined")
+							{
+								let rotationM3 =Cesium.Matrix3.fromQuaternion(boxEntity.orientation._value,new Cesium.Matrix3());
+								let localFrame =Cesium.Matrix4.fromRotationTranslation(rotationM3,Cesium.Cartesian3.ZERO,new Cesium.Matrix4());
+								let inverse =Cesium.Matrix4.inverse(Cesium.Transforms.eastNorthUpToFixedFrame(position),new Cesium.Matrix4());
+								let hprm =Cesium.Matrix4.multiply(inverse,localFrame,new Cesium.Matrix4());
+								var rotation = Cesium.Matrix4.getMatrix3(hprm,new Cesium.Matrix3());
+								let hpr =  Cesium.HeadingPitchRoll.fromQuaternion(Cesium.Quaternion.fromRotationMatrix(rotation));
+								heading = hpr.heading;
+							}					
+							
+							
+							var boxOptions = {
+								dimensions: newDim,
+								position: position,
+								clipMode: clipMode,
+								heading: heading
+							};
+							setAllLayersClipOptions(boxOptions);
+						}
+
+						function setAllLayersClipColor() {
+							for(var i = 0, j = layers.length; i < j; i++) {
+								layers[i].clipLineColor = new Cesium.Color(1, 1, 1, 0);
+							}
+						}
+
+						function setAllLayersClipOptions(boxOptions) {
+							for(var i = 0, j = layers.length; i < j; i++) {
+								layers[i].setCustomClipBox(boxOptions);
+							}
+						}
+
+					}, function(e) {
+						if(widget._showRenderLoopErrors) {
+							var title = '加载SCP失败，请检查网络连接状态或者url地址是否正确？';
+							widget.showErrorPanel(title, undefined, e);
+						}
+					});
+				} catch(e) {
+					if(widget._showRenderLoopErrors) {
+						var title = '渲染时发生错误，已停止渲染。';
+						widget.showErrorPanel(title, undefined, e);
+					}
+				}
+			}
+			if (typeof Cesium !== 'undefined') {
+				window.startupCalled = true;
+				onload(Cesium);
+			}
+		</script>
+	</body>
+
+</html>

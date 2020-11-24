@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>飞机空域管理-GPU空间查询</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="css/pretty.css" rel="stylesheet">
+    <script src="js/jquery.min.js"></script>
+    <script src="js/config.js"></script>
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+    <style>
+        html,
+        body,
+        #cesiumContainer {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000000;
+        }
+
+        #loadingOverlay {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            opacity: 0.9;
+            width: 100%;
+            height: 10%;
+            display: none;
+        }
+
+        #loadingOverlay h1 {
+            text-align: center;
+            position: relative;
+            top: 50%;
+            margin-top: -0.5em;
+        }
+
+        .loading #loadingOverlay {
+            display: block;
+        }
+
+        .bubble2 {
+            text-align: center;
+            position: absolute;
+            background-color: rgba(38, 38, 38, 0.75);
+            padding: 10px;
+            color: #ffffff;
+            max-width: 330px;
+            max-height: 450px;
+            border-radius: 5px;
+        }
+
+    </style>
+</head>
+
+<body class="loading">
+<div id="cesiumContainer"></div>
+<div id="loadingOverlay">
+    <h1>Loading data...</h1>
+</div>
+
+<div id="toolbar" class="tool-bar param-container">
+    <div class="param-item">
+        <input type="checkbox" id="track">
+        <label>跟踪飞行</label>
+    </div>
+</div>
+<div id="bubble2" class="bubble2" style="display: none">
+    <P></P>
+    <p></p>
+</div>
+<script>
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer', {
+            selectionIndicator: false,
+            infoBox: false,
+            timeline: true
+        });
+        window.scene = viewer.scene;
+        scene.globe.show = false;
+
+
+        var widget = viewer.cesiumWidget;
+        var timeInterval;
+        $('#loadingbar').remove();
+        var promise = scene.open('http://www.supermapol.com/realspace/services/3D-JiChangKongYuTi/rest/realspace');
+        Cesium.when(promise, function (layers) {
+            $("#loadingOverlay").remove();
+
+            scene.camera.setView({
+                destination: new Cesium.Cartesian3(-2473789.781419497, 5884416.870909906, -87.19188690588408),
+                orientation: {
+                    heading: 4.729577036602896,
+                    pitch: -0.1891677014689821,
+                }
+            });
+
+
+            var layerSelect = [];
+            var layer = layers[0];
+            // layer.maxTransparentAlpha = 0.5;
+            layer.style3D.fillForeColor.alpha = 0.5;
+
+            // layer.style3D.bottomAltitude = 1000;
+            layer.selectedColor = new Cesium.Color(17 / 255, 213 / 255, 255 / 255, 0.5);
+            layer.selectColorType = Cesium.SelectColorType.REPLACE;
+            layerSelect.push(layer);
+
+
+            var startTime = Cesium.JulianDate.fromDate(new Date(2020, 7, 18, 16));
+            var startPosition = Cesium.Cartesian3.fromDegrees(112.73813330768, 0.000559675347594733, 1000);
+            var midPosition = Cesium.Cartesian3.fromDegrees(112.53218134231, 0.000558471618781431, 0);
+
+            var endTime = Cesium.JulianDate.addSeconds(startTime, 360, new Cesium.JulianDate());
+            var endTime2 = Cesium.JulianDate.addSeconds(endTime, 360, new Cesium.JulianDate());
+            var endPosition = Cesium.Cartesian3.fromDegrees(112.338185788226, 0.00429022657737391, 1000);
+            viewer.clock.startTime = startTime.clone();
+            viewer.clock.stopTime = endTime2.clone();
+            viewer.clock.currentTime = startTime.clone();
+            viewer.clock.clockRange = Cesium.ClockRange.LOOP_STOP; //Loop at the end
+            viewer.clock.multiplier = 10;
+            viewer.timeline.zoomTo(startTime, endTime2);
+            var positionProperty = new Cesium.SampledPositionProperty();
+            positionProperty.addSample(startTime, startPosition);
+            positionProperty.addSample(endTime, midPosition);
+            positionProperty.addSample(endTime2, endPosition);
+
+            var Position = positionProperty.getValue(viewer.clock.currentTime);
+
+
+            var heading = Cesium.Math.toRadians(0);
+            var pitch = 0;
+            var roll = 0;
+            var hpr = new Cesium.HeadingPitchRoll(heading, pitch, roll);
+            var orientation = Cesium.Transforms.headingPitchRollQuaternion(Position, hpr);
+            var Model = viewer.entities.add({
+                name: "gltf",
+                position: new Cesium.CallbackProperty(function () {
+                    return Position;
+                }, false),
+                orientation: orientation,
+                model: {
+                    uri: "./SampleData/gltf/飞机模型/客机模型.gltf",
+                    scale: 300
+                },
+                viewFrom: new Cesium.Cartesian3(5000, 300, 2000)
+
+            });
+
+
+            // viewer.trackedEntity = Model;
+
+
+            var mode = Cesium.PositionMode.Intersects;
+            var spatialQuery = new Cesium.SpatialQuery3D(scene);
+            spatialQuery.fillColor.alpha = 0.0;//分析体 透明
+            spatialQuery.outlineColor = Cesium.Color.CORNFLOWERBLUE;
+            // spatialQuery.fillStyle = Cesium.FillStyle.WireFrame;
+
+            // 调用当前选择模型类型的函数
+            var geometry = new Cesium.GeoBox(500, 500, 500);
+            geometry.geoPosition = new Cesium.Point3D(112.73813330768, 0.000559675347594733, 1000);
+            spatialQuery.geometry = geometry;
+            spatialQuery.positionMode = mode;
+            spatialQuery.layers = layerSelect;
+
+            spatialQuery.build();
+
+
+            var number = 0;
+            var QueryResult;
+            setInterval(function () {
+                QueryResult = spatialQuery.getQueryIDs();
+                if (QueryResult.length > 0) {
+                    // bubble.showAt(Position);
+
+                    // var idsObj = QueryResult[0].ids;
+                    // if (idsObj.indexOf("3") > -1) {
+                    //     $(bubble.title).text('降落：您已进入空管区域');
+                    // } else if (idsObj.indexOf("4") > -1) {
+                    //     $(bubble.title).text('起飞：您已驶离空管区域');
+                    // }
+                } else {
+                    $("#bubble2").hide();
+                }
+            }, 2000);
+
+
+            viewer.clock.onTick.addEventListener(function () {
+                var currentTime = Cesium.JulianDate.clone(viewer.clock.currentTime);
+                Position = positionProperty.getValue(currentTime);
+
+                if (spatialQuery.geometry) {
+                    // 从笛卡尔坐标获取经纬度
+                    var cartographic = Cesium.Cartographic.fromCartesian(Position);
+                    var newPos = new Cesium.Point3D(Cesium.Math.toDegrees(cartographic.longitude), Cesium.Math.toDegrees(cartographic.latitude), cartographic.height);
+                    spatialQuery.geometry.geoPosition = newPos;
+
+                    if (QueryResult && QueryResult.length > 0) {
+                        // bubble.showAt(Position);
+                    }
+                }
+            });
+
+            $("#track").on("input change", function () {
+                if (this.checked) {
+                    viewer.trackedEntity = Model;
+                } else {
+                    viewer.trackedEntity = undefined;
+                }
+            });
+
+
+            function Bubble(scene, id) {
+                var container = document.getElementById(id);
+                this.container = container;
+                var pNodes = $(container).find('p');
+                this.title = pNodes[0];
+                this.content = pNodes[1];
+                this.scenePosition = new Cesium.Cartesian3();
+                var _this = this;
+                scene.postRender.addEventListener(function () {
+                    var canvasHeight = scene.canvas.height;
+                    var windowPosition = new Cesium.Cartesian2();
+                    Cesium.SceneTransforms.wgs84ToWindowCoordinates(scene, _this.scenePosition, windowPosition);
+                    container.style.bottom = (canvasHeight - windowPosition.y) + 'px';
+                    container.style.left = windowPosition.x + 'px';
+                    container.style.visibility = "visible";
+                });
+            }
+
+            Bubble.prototype.showAt = function (position) {
+                if (!position) {
+                    $(this.container).hide();
+                    return;
+                }
+                $(this.container).show();
+                this.scenePosition = Cesium.Cartesian3.clone(position);
+            };
+
+            var bubble = new Bubble(scene, 'bubble2');
+        });
+
+    }
+
+    if (typeof Cesium !== 'undefined') {
+        window.startupCalled = true;
+        onload(Cesium);
+    }
+</script>
+</body>
+
+</html>

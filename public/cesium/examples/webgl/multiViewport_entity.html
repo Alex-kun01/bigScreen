@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>entity分屏显示</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <script src="./js/bootstrap-select.min.js"></script>
+    <script src="./js/config.js"></script>
+    <script type="text/javascript" src="./js/require.min.js" data-main="js/main"></script>
+    <style>
+        label {
+            display: inline-block;
+            margin-right: 1rem;
+        }
+
+        label > input,
+        label > span {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        #split_up {
+            position: absolute;
+            background-color: white;
+            left: 50%;
+            bottom: 50%;
+            width: 2px;
+            height: 50%;
+            -webkit-transform: translate(-50%, 0);
+        }
+
+        #split_bottom {
+            position: absolute;
+            background-color: white;
+            left: 50%;
+            top: 50%;
+            width: 2px;
+            height: 50%;
+            -webkit-transform: translate(-50%, 0);
+        }
+
+        #split_left {
+            position: absolute;
+            background-color: white;
+            right: 50%;
+            bottom: 50%;
+            height: 2px;
+            width: 50%;
+            -webkit-transform: translate(0, -50%);
+        }
+
+        #split_right {
+            position: absolute;
+            background-color: white;
+            left: 50%;
+            bottom: 50%;
+            height: 2px;
+            width: 50%;
+            -webkit-transform: translate(0, -50%);
+        }
+
+        #split_vertical_trisection_left {
+            position: absolute;
+            background-color: white;
+            left: 33.33%;
+            top: 0;
+            height: 100%;
+            width: 2px;
+        }
+
+        #split_vertical_trisection_right {
+            position: absolute;
+            background-color: white;
+            right: 33.33%;
+            top: 0;
+            height: 100%;
+            width: 2px;
+        }
+    </style>
+</head>
+
+<body>
+<div id="cesiumContainer"></div>
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+<div id="split_up" style="display: none;"></div>
+<div id="split_bottom" style="display: none;"></div>
+<div id="split_left" style="display: none;"></div>
+<div id="split_right" style="display: none;"></div>
+<div id="split_vertical_trisection_left" style="display: none;"></div>
+<div id="split_vertical_trisection_right" style="display: none;"></div>
+<div id="toolbar" class="param-container tool-bar">
+    <select id="viewportType" class="selectpicker show-tick form-control">
+        <option value="NONE" selected>不使用分屏</option>
+        <option value="HORIZONTAL">水平分屏</option>
+        <option value="VERTICAL">垂直分屏</option>
+        <option value="TRIPLE">三视口</option>
+        <option value="VerticalTrisection">水平三视口</option>
+        <option value="QUAD">四视口</option>
+    </select>
+    <div id="pannel" style="padding: 10px;display: none;">
+        <div id="kml" style="margin-top: 1rem;">
+            <p>polylineVolume-entity：</p>
+            <div>
+                <label id="b_one">
+                    <input type="checkbox" id="building_one" data-value="0" checked/>
+                    <span>一</span>
+                </label>
+                <label id="b_two">
+                    <input type="checkbox" id="building_two" data-value="1" checked/>
+                    <span>二</span>
+                </label>
+            </div>
+            <div>
+                <label id="b_three">
+                    <input type="checkbox" id="building_three" data-value="2" checked/>
+                    <span>三</span>
+                </label>
+                <label id="b_four">
+                    <input type="checkbox" id="building_four" data-value="3" checked/>
+                    <span>四</span>
+                </label>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer');
+        var scene = viewer.scene;
+
+
+        function computeCircle(radius) {
+            var positions = [];
+            for (var i = 0; i < 360; i++) {
+                var radians = Cesium.Math.toRadians(i);
+                positions.push(new Cesium.Cartesian2(radius * Math.cos(radians), radius * Math.sin(radians)));
+            }
+            return positions;
+        }
+
+        function computeStar(arms, rOuter, rInner) {
+            var angle = Math.PI / arms;
+            var length = 2 * arms;
+            var positions = new Array(length);
+            for (var i = 0; i < length; i++) {
+                var r = (i % 2) === 0 ? rOuter : rInner;
+                positions[i] = new Cesium.Cartesian2(Math.cos(i * angle) * r, Math.sin(i * angle) * r);
+            }
+            return positions;
+        }
+
+        //加载kml文件
+        var kmlLayer;
+        var datasource =viewer.dataSources.add(Cesium.KmlDataSource.load('./SampleData/kml/crane.kml', {
+            camera: scene.camera,
+            canvas: scene.canvas
+        })).then(function (kmlDatasource) {
+            kmlLayer=kmlDatasource;
+            var entity = kmlDatasource.entities.values[0];
+
+            //加载polylineVolume
+            var redTube = kmlDatasource.entities.add({
+                name : 'Red tube with rounded corners',
+                polylineVolume : {
+                    positions : Cesium.Cartesian3.fromDegreesArray([-85.0, 32.0,
+                        -85.0, 36.0,
+                        -89.0, 36.0]),
+                    shape : computeCircle(60000.0),
+                    material : Cesium.Color.RED
+                }
+            });
+
+            var greenBox = kmlDatasource.entities.add({
+                name : 'Green box with beveled corners and outline',
+                polylineVolume : {
+                    positions : Cesium.Cartesian3.fromDegreesArrayHeights([-90.0, 32.0, 0.0,
+                        -90.0, 36.0, 100000.0,
+                        -94.0, 36.0, 0.0]),
+                    shape :[new Cesium.Cartesian2(-50000, -50000),
+                        new Cesium.Cartesian2(50000, -50000),
+                        new Cesium.Cartesian2(50000, 50000),
+                        new Cesium.Cartesian2(-50000, 50000)],
+                    cornerType : Cesium.CornerType.BEVELED,
+                    material : Cesium.Color.GREEN.withAlpha(0.5),
+                    outline : true,
+                    outlineColor : Cesium.Color.BLACK
+                }
+            });
+
+            var blueStar = kmlDatasource.entities.add({
+                name : 'Blue star with mitered corners and outline',
+                polylineVolume : {
+                    positions : Cesium.Cartesian3.fromDegreesArrayHeights([-95.0, 32.0, 0.0,
+                        -95.0, 36.0, 100000.0,
+                        -99.0, 36.0, 200000.0]),
+                    shape : computeStar(7, 70000, 50000),
+                    cornerType : Cesium.CornerType.MITERED,
+                    material : Cesium.Color.BLUE
+                }
+            });
+
+            // viewer.zoomTo(entity);
+            viewer.zoomTo(greenBox);
+        });
+
+
+
+
+        $('#viewportType').change(function () {
+            var value = $(this).val();
+            switch (value) {
+                case "NONE":
+                    $("#split_up").css("display", "none");
+                    $("#split_bottom").css("display", "none");
+                    $("#split_left").css("display", "none");
+                    $("#split_right").css("display", "none");
+                    $("#split_vertical_trisection_left").css("display", "none");
+                    $("#split_vertical_trisection_right").css("display", "none");
+                    $('#pannel').hide();
+                    break;
+                case "HORIZONTAL":
+                    $("#split_up").css("display", "block");
+                    $("#split_bottom").css("display", "block");
+                    $("#split_left").css("display", "none");
+                    $("#split_right").css("display", "none");
+                    $("#split_vertical_trisection_left").css("display", "none");
+                    $("#split_vertical_trisection_right").css("display", "none");
+                    $('#pannel').show();
+                    $('#b_one,#b_two,#g_one,#g_two').show();
+                    $('#b_three,#g_three,#b_four,#g_four').hide();
+                    break;
+                case "VERTICAL":
+                    $("#split_up").css("display", "none");
+                    $("#split_bottom").css("display", "none");
+                    $("#split_left").css("display", "block");
+                    $("#split_right").css("display", "block");
+                    $("#split_vertical_trisection_left").css("display", "none");
+                    $("#split_vertical_trisection_right").css("display", "none");
+                    $('#pannel').show();
+                    $('#b_one,#b_two,#g_one,#g_two').show();
+                    $('#b_three,#g_three,#b_four,#g_four').hide();
+                    break;
+                case "TRIPLE":
+                    $("#split_up").css("display", "block");
+                    $("#split_bottom").css("display", "none");
+                    $("#split_left").css("display", "block");
+                    $("#split_right").css("display", "block");
+                    $("#split_vertical_trisection_left").css("display", "none");
+                    $("#split_vertical_trisection_right").css("display", "none");
+                    $('#pannel').show();
+                    $('#b_one,#b_two,#g_one,#g_two,#b_three,#g_three').show();
+                    $('#b_four,#g_four').hide();
+                    break;
+                case "VerticalTrisection":
+                    $("#split_up").css("display", "none");
+                    $("#split_bottom").css("display", "none");
+                    $("#split_left").css("display", "none");
+                    $("#split_right").css("display", "none");
+                    $("#split_vertical_trisection_left").css("display", "block");
+                    $("#split_vertical_trisection_right").css("display", "block");
+                    $('#b_one,#b_two,#g_one,#g_two,#b_three,#g_three').show();
+                    $('#b_four,#g_four').hide();
+                    $('#pannel').show();
+                    break;
+                default:
+                    $("#split_up").css("display", "block");
+                    $("#split_bottom").css("display", "block");
+                    $("#split_left").css("display", "block");
+                    $("#split_right").css("display", "block");
+                    $("#split_vertical_trisection_left").css("display", "none");
+                    $("#split_vertical_trisection_right").css("display", "none");
+                    $('#pannel').show();
+                    $('#b_one,#b_two,#g_one,#g_two,#b_three,#g_three,#b_four,#g_four').show();
+                    break;
+            }
+            scene.multiViewportMode = Cesium.MultiViewportMode[value];
+        });
+
+        $('#kml input[type=checkbox]').on("input propertychange", function (evt) {
+            var value = Number($(this).attr('data-value'));
+            kmlLayer.setVisibleInViewport(value, $(this).prop("checked"));
+        });
+        $('#loadingbar').remove();
+
+    }
+</script>
+</body>
+
+</html>

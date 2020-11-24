@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>图层颜色过滤</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/spectrum.js"></script>
+    <script src="./js/vue.min.js"></script>
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+    <script src="./js/config.js"></script>
+    <style>
+        #pick-color {
+            height: 30px;
+            line-height: 30px;
+            margin: 15px 0 10px 0;
+            text-align: center;
+            border: 1px solid #777;
+        }
+        #pick-color:hover {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+<div id="toolbar" class="param-container tool-bar">
+    <div class="param-item">
+        <label>颜色透明</label>
+        <input class="colorPicker" size="8" data-bind="value: color,valueUpdate: 'input'" id="colorPicker">
+    </div>
+    <div class="param-item">
+        <label>颜色透明容限</label>
+        <input type="range" min="0" max="1" step="0.02" data-bind="value: tolerance,valueUpdate: 'input'" id="tolerance" style="display: block;width:200px;margin: 5px 0">
+    </div>
+    <div id="pick-color">拾取颜色</div>
+</div>
+
+<script>
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer');
+        let scene = viewer.scene;
+
+        let layer,
+            isPickColor = false;
+
+        try {
+            //打开所发布三维服务下的所有图层
+            var promise = scene.open('http://localhost:8090/iserver/services/3D-qingxie/rest/realspace');
+            Cesium.when(promise, function (layers) {
+                layer = layers[0];
+                let handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+                handler.setInputAction(function(e) {
+                    var promise = scene.outputSceneToFile();
+                    Cesium.when(promise, function (base64data) {
+                        getPixelsData(base64data, e.position, getCurrentPointColor);
+                    });
+                }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+            }, function (e) {
+                if (widget._showRenderLoopErrors) {
+                    var title = '加载SCP失败，请检查网络连接状态或者url地址是否正确？';
+                    widget.showErrorPanel(title, undefined, e);
+                }
+            }).otherwise(function (e) {
+                console.error(e);
+            });
+        } catch (e) {
+            if (widget._showRenderLoopErrors) {
+                var title = '渲染时发生错误，已停止渲染。';
+                widget.showErrorPanel(title, undefined, e);
+            }
+        }
+
+        function getPixelsData(base64data, pos, cb) {
+            if (!isPickColor) return;
+            let image = new Image();
+            image.src = base64data;
+            image.onload = function() {
+                var canvas = document.createElement("canvas");
+                canvas.width = image.width;
+                canvas.height = image.height;
+                let context = canvas.getContext("2d");
+                context.drawImage(image, 0, 0);
+                let res = context.getImageData(pos.x, pos.y, 1, 1);
+                cb.call({}, res.data);
+            }
+        }
+
+        function getCurrentPointColor(color) {
+            let cssString = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+            var selectedColor = Cesium.Color.fromCssColorString(cssString);
+            layer.transparentBackColor = selectedColor;
+            $("#colorPicker").spectrum('set', cssString);
+            switchDrawCur(false);
+            isPickColor = false;
+        }
+
+        function switchDrawCur(isActive) {
+            if(isActive){
+                viewer.enableCursorStyle = false;
+                viewer._element.style.cursor = '';
+                $('body').removeClass('drawCur').addClass('drawCur');
+            } else {
+                viewer.enableCursorStyle = true;
+                $('body').removeClass('drawCur');
+            }
+        }
+
+
+        var viewModel = {
+            color : "rgba(255,255,255)",
+            tolerance : 0
+        };
+        $("#colorPicker").spectrum({
+            color: viewModel.color,
+            showPalette: true,
+            showAlpha: true,
+            localStorageKey: "spectrum.demo",
+            palette: palette
+        });
+        Cesium.knockout.track(viewModel);
+        var toolbar = document.getElementById('toolbar');
+        Cesium.knockout.applyBindings(viewModel, toolbar);
+        Cesium.knockout.getObservable(viewModel,'color').subscribe(function(newValue) {
+                var selectedColor = Cesium.Color.fromCssColorString(newValue);
+                layer.transparentBackColor = selectedColor;
+            }
+        );
+        Cesium.knockout.getObservable(viewModel,'tolerance').subscribe(function(newValue) {
+                layer.transparentBackColorTolerance = newValue;
+            }
+        );
+        $('#pick-color').click(function (e) {
+            isPickColor = true;
+            switchDrawCur(true);
+        });
+        $('#loadingbar').remove();
+        $('#toolbar').show();
+    }
+    if (typeof Cesium !== 'undefined') {
+        window.startupCalled = true;
+        onload(Cesium);
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>雷达传感器</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <link rel="stylesheet" href="./js/iview/styles/iview.css">
+    <style>
+        .ivu-form-item-label {
+            color: white!important;
+            text-align: left!important;
+        }
+        .ivu-form-item {
+            margin-bottom: 0;
+        }
+        .ivu-input, .ivu-select, .ivu-select-selection {
+            height: 30px;
+            background: #333;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div id="app"></div>
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+<script type="text/javascript" src="./js/vue.min.js"></script>
+<script type="text/javascript" src="./js/iview/iview.min.js"></script>
+<script type="text/javascript" src="./js/vue_mixin.js"></script>
+<script src="./js/config.js"></script>
+<script src="../Build/Cesium/Cesium.js"></script>
+<!-- 自定义几何体的js 瓣体扫描器效果-->
+<script src="js/CesiumGeometry.js"></script>
+<script type="text/javascript">
+    const vueInstance = new Vue({
+        el: '#app',
+        template: `
+            <div>
+                <Form
+                    style="width: 280px;"
+                    class="tool-bar param-container"
+                    v-if="isShowToolbar"
+                >
+                    <FormItem label="半径（米）" :label-width="120">
+                        <Input v-model="radius" style="width:120px;height:30px;">
+                    </FormItem>
+                    <FormItem label="方向（heading）" :label-width="120">
+                        <Slider v-model="heading" :max="360" :step="1"></Slider>
+                    </FormItem>
+                    <FormItem label="俯仰（pitch）" :label-width="120">
+                        <Slider v-model="pitch" :max="360" :step="1"></Slider>
+                    </FormItem>
+                    <FormItem label="翻滚（roll）" :label-width="120">
+                        <Slider v-model="roll" :max="360" :step="1"></Slider>
+                    </FormItem>
+                    <FormItem label="左右夹角（x）" :label-width="120">
+                        <Slider v-model="xHalfAngle" :max="90" :step="1"></Slider>
+                    </FormItem>
+                    <FormItem label="上下夹角（y）" :label-width="120">
+                        <Slider v-model="yHalfAngle" :max="90" :step="1"></Slider>
+                    </FormItem>
+                    <FormItem label="扫描线颜色" :label-width="120">
+                        <ColorPicker v-model="lineColor" alpha></ColorPicker>
+                    </FormItem>
+                    <FormItem label="扫描面颜色" :label-width="120">
+                        <ColorPicker v-model="scanPlaneColor" alpha></ColorPicker>
+                    </FormItem>
+                    <FormItem label="扫描模式" :label-width="120">
+                        <Select v-model="scanPlaneMode">
+                            <Option :value="0">垂直扫描</Option>
+                            <Option :value="1">水平扫描</Option>
+                        </Select>
+                    </FormItem>
+                    <FormItem label="扫描速率" :label-width="120">
+                        <Slider v-model="scanPlaneRate" :max="10" :step="1"></Slider>
+                    </FormItem>
+                    <FormItem label="显示扫描面" :label-width="120">
+                        <Checkbox v-model="scanPlane">是否显示</Checkbox>
+                    </FormItem>
+                </Form>
+            </div>
+        `,
+        data() {
+            return {
+                isShowToolbar: false,
+                heading: 0,
+                pitch: 0,
+                roll: 0,
+                xHalfAngle: 60,
+                yHalfAngle: 60,
+                radius: 1000,
+                scanPlane: true,
+                lineColor: 'rgba(0, 0, 1, 1)',
+                scanPlaneColor: 'rgba(0.0, 1.0, 1.0, 0.4)',
+                scanPlaneMode: 0,
+                scanPlaneRate: 3,
+                showIntersection: true
+            }
+        },
+        watch: {
+            heading(val) {
+                let hpr = new Cesium.HeadingPitchRoll(
+                    Cesium.Math.toRadians(val),
+                    Cesium.Math.toRadians(this.pitch),
+                    Cesium.Math.toRadians(this.roll)
+                );
+                let orientation = Cesium.Transforms.headingPitchRollQuaternion(this.sensorEntity.position._value, hpr);
+                this.sensorEntity.orientation = orientation;
+            },
+            pitch(val) {
+                let hpr = new Cesium.HeadingPitchRoll(
+                    Cesium.Math.toRadians(this.heading),
+                    Cesium.Math.toRadians(val),
+                    Cesium.Math.toRadians(this.roll)
+                );
+                let orientation = Cesium.Transforms.headingPitchRollQuaternion(this.sensorEntity.position._value, hpr);
+                this.sensorEntity.orientation = orientation;
+            },
+            roll(val) {
+                let hpr = new Cesium.HeadingPitchRoll(
+                    Cesium.Math.toRadians(this.heading),
+                    Cesium.Math.toRadians(this.pitch),
+                    Cesium.Math.toRadians(val)
+                );
+                let orientation = Cesium.Transforms.headingPitchRollQuaternion(this.sensorEntity.position._value, hpr);
+                this.sensorEntity.orientation = orientation;
+            },
+        },
+        mounted() {
+            this.onload(Cesium);
+        },
+        methods: {
+            onload (Cesium) {
+                let viewer = new Cesium.Viewer('cesiumContainer', {
+                    baseLayerPicker: false,
+                    terrainProvider : new Cesium.CesiumTerrainProvider({
+                        url : URL_CONFIG.STK,
+                    })
+                });
+                viewer.imageryLayers.addImageryProvider(new Cesium.BingMapsImageryProvider({
+                    url: 'https://dev.virtualearth.net',
+                    mapStyle: Cesium.BingMapsStyle.AERIAL, // 航拍图像
+                    key: URL_CONFIG.BING_MAP_KEY
+                }));
+                this.hideLoading();
+                this.isShowToolbar = true;
+                let self = this;
+                let sensorEntity = this.sensorEntity = viewer.entities.add({
+                    position: Cesium.Cartesian3.fromDegrees(30, 30, 200),
+                    rectangularSensor: new Cesium.RectangularSensorGraphics({
+                        //gaze: targetEntity,
+                        radius: new Cesium.CallbackProperty(function () {
+                            return +self.radius;
+                        }, false),
+                        slice: 120,//切分程度
+                        xHalfAngle: new Cesium.CallbackProperty(function () {
+                            return Cesium.Math.toRadians(self.xHalfAngle);
+                        }, false),//左右夹角
+                        yHalfAngle: new Cesium.CallbackProperty(function () {
+                            return Cesium.Math.toRadians(self.yHalfAngle);
+                        }, false),//上下夹角
+                        lineColor: new Cesium.CallbackProperty(function () {
+                            return Cesium.Color.fromCssColorString(self.lineColor);
+                        }, false),//线颜色
+                        material: new Cesium.Color(0.0, 1.0, 1.0, 0.4),//统一材质
+                        showScanPlane: new Cesium.CallbackProperty(function () {
+                            return self.scanPlane;
+                        }, false),//显示扫描面
+                        scanPlaneColor: new Cesium.CallbackProperty(function () {
+                            return Cesium.Color.fromCssColorString(self.scanPlaneColor);
+                        }, false),//扫描面颜色
+                        scanPlaneMode: new Cesium.CallbackProperty(function () {
+                            return self.scanPlaneMode ? 'vertical' : 'horizontal';
+                        }, false),//垂直扫描模式
+                        scanPlaneRate: new Cesium.CallbackProperty(function () {
+                            return self.scanPlaneRate;
+                        }, false),//扫描速率
+                        showIntersection: true,//是否显示扫描与地球的线
+                        showThroughEllipsoid: false//是否穿过地球显示
+                    })
+                });
+                // console.log(viewer.scene.camera)
+                // let hand = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+                // hand.setInputAction(function () {
+                //     console.log(viewer.scene.camera);
+                // }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
+                viewer.scene.camera.flyTo({
+                    destination: new Cesium.Cartesian3(4786358.252048572, 2763065.66220609, 3186611.6690105507),
+                    orientation: {
+                        heading: 6.283158722315867,
+                        pitch: -0.1086498908579534,
+                        roll: 1.0675904604795505e-12
+                    }
+                });
+            },
+        }
+    })
+
+</script>
+</body>
+</html>

@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="IE=Edge,chrome=1" http-equiv="X-UA-Compatible">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no"
+          name="viewport">
+    <title>开敞度分析</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <link href="./css/style.css" rel="stylesheet">
+    <script src="./js/jquery.min.js" type="text/javascript"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/tooltip.js"></script>
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+    <style>
+        .drawCur {
+            cursor: url(./images/cur/measure.cur), auto;
+        }
+        input[type="checkbox"] {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            display: inline-block;
+            text-align: center;
+            vertical-align: middle;
+            line-height: 12px;
+            border-radius: 2px;
+            /*color: #3C8DBC;*/
+            border: 1px solid #3C8DBC;
+            margin: 0;
+        }
+        input[type="checkbox"]:checked::before {
+            content: "\2713";
+            border-color: #3C8DBC;
+            color: #3C8DBC;
+        }
+    </style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+<button id="bn"
+        style="position : absolute; left : 1%; top : 2%; display : none;background-color: #00a1cb;color:#fff;border: 0">
+    分析
+</button>
+<div id="toolbar" style="position : absolute; left : 1%; top : 2%;color: #ffffff;height: auto;display : none;">
+    <div class="titleBox" style="margin-bottom: 10px">
+        <div class="titl" style="width: 80px;">开敞度分析</div>
+        <span aria-hidden="false" class="close2">×</span>
+    </div>
+    <div style="font-size: 12px;margin-bottom: 10px">观察者信息：</div>
+    <div class="middlebox">
+        <span class="tit">X :</span>
+        <input class="middle-input" id="longitude" step="0.0001" type="number" value=""/>
+    </div>
+    <div class="middlebox">
+        <span class="tit">Y :</span>
+        <input class="middle-input" id="latitude" step="0.0001" type="number" value=""/>
+    </div>
+    <div class="middlebox">
+        <span class="tit">Z :</span>
+        <input class="middle-input" id="height" min="0" step="1" type="number" value=""/>
+    </div>
+    <div style="font-size: 12px;margin-bottom: 10px">参数设置：</div>
+    <div class="middlebox m">
+        <span class="tit">观察半径:</span>
+        <input class="min-solider" id="observerRsdius" max="1000" min="1" step="1" style="width:45%" type="range"
+               value="100"/>
+        <input class="min-solider" id="Rsdius" max="1000" min="1" step="1" style="width:23%; height:20px ;margin: 0;"
+               type="number" value="100"/>
+    </div>
+    <div class="middlebox m">
+        <span class="tit">起始角度:</span>
+        <input class="min-solider" id="StartingAngle" max="360" min="0" step="5" style="width:45%" type="range"
+               value="0"/>
+        <input class="min-solider" id="Sangle" max="360" min="0" step="1" style="width:23%; height:20px ;margin: 0;"
+               type="number" value="0"/>
+    </div>
+    <div class="middlebox m">
+        <span class="tit">终止角度:</span>
+        <input class="min-solider" id="EndAngle" max="360" min="0" step="1" style="width:45%" type="range" value="360"/>
+        <input class="min-solider" id="Eangle" max="360" min="0" step="1" style="width:23%; height:20px ;margin: 0;"
+               type="number" value="360"/>
+    </div>
+    <div class="middlebox m">
+        <span class="">可视部分颜色:</span>
+        <input id="VisibleColor" type="color" value="#00B7EF"/>
+    </div>
+    <div class="middlebox m">
+        <span class="">隐藏部分颜色:</span>
+        <input id="HiddenColor" type="color" value="#E36C09"/>
+    </div>
+    <div class="middlebox">
+        <span class="tit">显示类型:</span>
+        <select class="select-container " id="calMode1" style="width: 70%">
+            <option value="VisiblePart">可视部分</option>
+            <option value="HiddenPart">隐藏部分</option>
+            <option value="ShowAll">全部显示</option>
+        </select>
+    </div>
+    <div style="margin:10px ">
+        <span style="font-size: 12px">是否封口:</span> <input id="isClosed" type="checkbox" style="margin-left: 10px" />
+        <span style="font-size: 10px;margin-left: 5px">(当为360度闭合半球时设置无效)</span>
+    </div>
+    <div class="boxchild ">
+        <button class="tbtn tbn1" id="active" type="button">分析</button>
+        <button class="tbtn " id="clear" type="button">清除</button>
+    </div>
+</div>
+
+<script type="text/javascript">
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer', {
+            infoBox: false,
+        });
+        var scene = viewer.scene;
+        var widget = viewer.cesiumWidget;
+        var longitude, latitude, height;
+        var viewDomeArray = []; //存多个开敞度对象数组
+        var ViewDomeType = 0; //开敞度类型
+        var isClosed = false; //是否封口
+        var handler;
+        var iTime , Time; //定时器
+        try {
+            viewer.imageryLayers.addImageryProvider(new Cesium.BingMapsImageryProvider({
+                key : URL_CONFIG.BING_MAP_KEY,//可至官网（https://www.bingmapsportal.com/）申请key
+                url : URL_CONFIG.BINGMAP
+            }));
+            var promise = scene.open(URL_CONFIG.SCENE_CBD);
+            Cesium.when(promise, function (layers) {
+                for (var i = 0; i < layers.length; i++) {
+                    layers[i].selectEnabled = false;
+                }
+                //图层加载完成,设置相机位置
+                scene.camera.setView({
+                    destination: Cesium.Cartesian3.fromDegrees(116.4491, 39.9011, 180),
+                    orientation: {
+                        heading: 0.0912,
+                        pitch: -0.3177,
+                        roll: 0
+                    }
+                });
+                $("#active").on("click", function () {
+                    mousestyle();
+                    initViewDome();
+                    handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+                    handler.setInputAction(function (e) {
+                        viewer.enableCursorStyle = true;
+                        $('body').removeClass('drawCur');
+                        //获取点击位置笛卡尔坐标
+                        var position = scene.pickPosition(e.position);
+                        //将笛卡尔坐标转化为经纬度坐标
+                        let positions = [];
+                        var cartographic = Cesium.Cartographic.fromCartesian(position);
+                        longitude = Cesium.Math.toDegrees(cartographic.longitude);
+                        latitude = Cesium.Math.toDegrees(cartographic.latitude);
+                        height = cartographic.height;
+                        if (height < 0) {
+                            height = 0;
+                        }
+                        if (positions.indexOf(longitude) == -1 && positions.indexOf(latitude) == -1) {
+                            positions.push(longitude);
+                            positions.push(latitude);
+                            positions.push(height);
+                        }
+                        //点击位置同步到显示框
+                        $("#longitude").val(longitude);
+                        $("#latitude").val(latitude);
+                        $("#height").val(height);
+                        updateViewDome(positions);
+                        handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_CLICK)
+                    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+                })
+
+                function initViewDome() {  //初始化
+                    let VisibleColor = Cesium.Color.fromCssColorString($("#VisibleColor").val());
+                    let HiddenColor = Cesium.Color.fromCssColorString($("#HiddenColor").val());
+                    let viewDome = new Cesium.ViewDome(scene); //构造新的开敞度分析对象
+                    // viewDome.viewPosition = [longitude, latitude, height]; //视点位置，这里用的是CBD示例的中心位置
+                    viewDome.distance = Number($("#observerRsdius").val());//可视距离
+                    viewDome.domeType = ViewDomeType; //开敞度类型,分为可视部分、不可视部分, 全部显示
+                    viewDome.visibleAreaColor = Cesium.Color.fromAlpha(VisibleColor, 0.5); //可视部颜色
+                    viewDome.hiddenAreaColor = Cesium.Color.fromAlpha(HiddenColor, 0.5); //隐藏部分颜色
+                    viewDome.startAngle = Number($("#StartingAngle").val());//起始角度
+                    viewDome.endAngle = Number($("#EndAngle").val());//终止角度
+                    viewDome.isClosed = isClosed;  //封口
+                    // viewDome.build(); //执行开敞度分析
+                    viewDomeArray.push(viewDome)
+                }
+
+                function move() {   //改变经纬度动态移动
+                    if (viewDomeArray.length == 0) {
+                        return
+                    }
+                    if (longitude && latitude && height) {
+                        viewDomeArray[viewDomeArray.length - 1].viewPosition = [longitude, latitude, height];
+                    }
+                    clearTimeout(Time); //防止点击多次，执行一次
+                    Time = setTimeout(function () {
+                        viewDomeArray[viewDomeArray.length - 1].startAngle = Number($("#StartingAngle").val()) //加这个才起作用
+                    }, 500);
+                }
+
+                function updateViewDome(p) {
+                    viewDomeArray[viewDomeArray.length - 1].viewPosition = p;
+                    viewDomeArray[viewDomeArray.length - 1].build(); //执行开敞度分析
+                    addpoint()
+                }
+
+                function mousestyle() { //鼠标样式
+                    viewer.enableCursorStyle = false;
+                    viewer._element.style.cursor = '';
+                    $('body').removeClass('drawCur').addClass('drawCur');
+                }
+
+                //结果清除
+                function clear() {
+                    viewer.entities.removeAll();
+                    viewDomeArray[viewDomeArray.length - 1].destroy();//释放对象
+                    viewDomeArray.pop();
+                    if (viewDomeArray.length == 0) {
+                        return
+                    } else {
+                        let v = viewDomeArray[viewDomeArray.length - 1];
+                        $("#longitude").val(v.viewPosition[0]);
+                        $("#latitude").val(v.viewPosition[1]);
+                        $("#height").val(v.viewPosition[2]);
+                        longitude = v.viewPosition[0];
+                        latitude = v.viewPosition[1];
+                        height = v.viewPosition[2];
+                        addpoint()
+                    }
+                }
+
+                function addpoint() {//添加点
+                    if (longitude == undefined || latitude == undefined || height == undefined) {
+                        return
+                    }
+                    //首先移除之前添加的点
+                    viewer.entities.removeAll();
+                    //在位置添加对应点
+                    viewer.entities.add(new Cesium.Entity({
+                        point: new Cesium.PointGraphics({
+                            color: new Cesium.Color(1, 0, 0),
+                            pixelSize: 6,
+                            outlineColor: new Cesium.Color(0, 1, 1)
+                        }),
+                        position: Cesium.Cartesian3.fromDegrees(longitude, latitude, height + 0.5)
+                    }));
+
+                }
+
+                $('#clear').click(function () {
+                    if (viewDomeArray.length == 0) {
+                        return
+                    }
+                    clear();
+                    handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_CLICK)
+                });
+                $("#longitude").bind("input propertychange", function () {
+                    longitude = parseFloat($("#longitude").val());
+                    if (!longitude) {
+                        return
+                    }
+                    clearTimeout(iTime);
+                    iTime = setTimeout(function () {
+                        move()
+                    }, 1000);
+                    addpoint()
+                })
+                $("#latitude").bind("input propertychange", function () {
+                    latitude = parseFloat($("#latitude").val());
+                    if (!latitude) {
+                        return
+                    }
+                    clearTimeout(iTime);
+                    iTime = setTimeout(function () {
+                        move()
+                    }, 1000);
+                    addpoint()
+                })
+                $("#height").bind("input propertychange", function () {
+                    height = parseFloat($("#height").val());
+                    if (!height) {
+                        return
+                    }
+                    clearTimeout(iTime);
+                    iTime = setTimeout(function () {
+                        move()
+                    }, 1000);
+                    addpoint()
+                })
+                $('#observerRsdius').bind('input propertychange', function () {
+                    $("#Rsdius").val($("#observerRsdius").val());
+                    if (viewDomeArray.length == 0) {
+                        return
+                    }
+                    if (Number($("#observerRsdius").val()) == 0) {
+                        return
+                    }
+                    clearTimeout(iTime);
+                    iTime = setTimeout(function () {
+                        viewDomeArray[viewDomeArray.length - 1].distance = Number($("#observerRsdius").val())
+                    }, 500);
+                });
+                $('#Rsdius').bind('input propertychange', function () {
+                    $("#observerRsdius").val($("#Rsdius").val())
+                    if (viewDomeArray.length == 0) {
+                        return
+                    }
+                    if (Number($("#observerRsdius").val()) == 0) {
+                        return
+                    }
+                    clearTimeout(iTime);
+                    iTime = setTimeout(function () {
+                        viewDomeArray[viewDomeArray.length - 1].distance = Number($("#observerRsdius").val())
+                    }, 500);
+                });
+
+                $('#StartingAngle').bind('input propertychange', function () {
+                    $("#Sangle").val($("#StartingAngle").val());
+                    if (viewDomeArray.length == 0) {
+                        return
+                    }
+                    clearTimeout(iTime);
+                    iTime = setTimeout(function () {
+                        viewDomeArray[viewDomeArray.length - 1].startAngle = Number($("#StartingAngle").val())
+                    }, 500);
+                });
+                $('#Sangle').bind('input propertychange', function () {
+                    $("#StartingAngle").val($("#Sangle").val());
+                    if (viewDomeArray.length == 0) {
+                        return
+                    }
+                    clearTimeout(iTime);
+                    iTime = setTimeout(function () {
+                        viewDomeArray[viewDomeArray.length - 1].startAngle = Number($("#StartingAngle").val())
+                    }, 500);
+                });
+
+                $('#EndAngle').bind('input propertychange', function () {
+                    $("#Eangle").val($("#EndAngle").val());
+                    if (viewDomeArray.length == 0) {
+                        return
+                    }
+                    clearTimeout(iTime);
+                    iTime = setTimeout(function () {
+                        viewDomeArray[viewDomeArray.length - 1].endAngle = Number($("#EndAngle").val())
+                    }, 500);
+                });
+                $('#Eangle').bind('input propertychange', function () {
+                    $("#EndAngle").val($("#Eangle").val());
+                    if (viewDomeArray.length == 0) {
+                        return
+                    }
+                    clearTimeout(iTime);
+                    iTime = setTimeout(function () {
+                        viewDomeArray[viewDomeArray.length - 1].endAngle = Number($("#EndAngle").val())
+                    }, 500);
+                });
+
+                $("#VisibleColor").bind("input propertychange", function () {
+                    let VisibleColor = Cesium.Color.fromCssColorString($("#VisibleColor").val())
+                    if (viewDomeArray.length == 0) {
+                        return
+                    }
+                    viewDomeArray[viewDomeArray.length - 1].visibleAreaColor = Cesium.Color.fromAlpha(VisibleColor, 0.5); //可视部颜色
+                })
+                $("#HiddenColor").bind("input propertychange", function () {
+                    let HiddenColor = Cesium.Color.fromCssColorString($("#HiddenColor").val())
+                    if (viewDomeArray.length == 0) {
+                        return
+                    }
+                    viewDomeArray[viewDomeArray.length - 1].hiddenAreaColor = Cesium.Color.fromAlpha(HiddenColor, 0.5);
+                })
+
+                $("#calMode1").on("input change", function () {
+                    var index = document.getElementById("calMode1").selectedIndex;
+                    switch (index) {
+                        case 0:
+                            ViewDomeType = Cesium.ViewDomeType.VISIBLEDOME;
+                            break;
+                        case 1:
+                            ViewDomeType = Cesium.ViewDomeType.HIDDENDOME;
+                            break;
+                        case 2:
+                            ViewDomeType = Cesium.ViewDomeType.ALLDOME;
+                            break;
+                        default:
+                            break;
+                    }
+                    if (viewDomeArray.length == 0) {
+                        return
+                    }
+                    viewDomeArray[viewDomeArray.length - 1].domeType = ViewDomeType
+                });
+
+                $("#isClosed").click(function () {
+                    if ($(this).prop("checked")) {
+                        isClosed  = true
+                    } else {
+                        isClosed  = false
+                    }
+                    viewDomeArray[viewDomeArray.length - 1].isClosed = isClosed;
+                });
+
+                $('#toolbar').show();
+                $('#loadingbar').remove();
+
+            }, function (e) {
+                if (widget._showRenderLoopErrors) {
+                    var title = '加载SCP失败，请检查网络连接状态或者url地址是否正确？';
+                    widget.showErrorPanel(title, undefined, e);
+                }
+            })
+        } catch (e) {
+            if (widget._showRenderLoopErrors) {
+                var title = '渲染时发生错误，已停止渲染。';
+                widget.showErrorPanel(title, undefined, e);
+            }
+        }
+        //关闭操作框
+        $(".close2").click(function () {
+            $("#toolbar").hide();
+            $("#bn").show()
+        });
+        $("#bn").click(function () {
+            $("#toolbar").show();
+            $("#bn").hide()
+        });
+    }
+	if (typeof Cesium !== 'undefined') {
+        window.startupCalled = true;
+        onload(Cesium);
+    }
+</script>
+</body>
+</html>

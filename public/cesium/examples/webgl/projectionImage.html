@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+	<meta name="viewport"
+		content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+	<title>视频投放</title>
+	<link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+	<link href="./css/pretty.css" rel="stylesheet">
+	<script src="./js/jquery.min.js"></script>
+	<script src="./js/slider.js"></script>
+	<script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+	<script src="./js/config.js"></script>
+	<style>
+		b {
+			color: #ffffff;
+		}
+
+		input[type=range] {
+			width: 180px;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="cesiumContainer"></div>
+	<div id='loadingbar' class="spinner">
+		<div class="spinner-container container1">
+			<div class="circle1"></div>
+			<div class="circle2"></div>
+			<div class="circle3"></div>
+			<div class="circle4"></div>
+		</div>
+		<div class="spinner-container container2">
+			<div class="circle1"></div>
+			<div class="circle2"></div>
+			<div class="circle3"></div>
+			<div class="circle4"></div>
+		</div>
+		<div class="spinner-container container3">
+			<div class="circle1"></div>
+			<div class="circle2"></div>
+			<div class="circle3"></div>
+			<div class="circle4"></div>
+		</div>
+	</div>
+	<div id="toolbar" class="param-container tool-bar">
+		<button type="button" id="active" class="button black">视频投放</button>
+		<button type="button" id="cilpRegion" class="button black">绘制裁剪面</button>
+		<button type="button" id="clear" class="button black">清除</button>
+		<video id="trailer" style="display:none" autoplay loop crossorigin controls>
+			<source src="media/video.mp4" type="video/mp4">
+		</video>
+		<div class="param-item">
+			<b>宽度：</b>
+			<input type="range" id="horizontal" min="1" max="50" step="1" value="20">
+		</div>
+		<div class="param-item">
+			<b>高度：</b>
+			<input type="range" id="vertical" min="1" max="50" step="1" value="10">
+		</div>
+		<div class="param-item">
+			<b>距离：</b>
+			<input type="range" id="distance" min="100" max="1000" step="1" value="200">
+		</div>
+		<div class="param-item">
+			<b>裁剪模式：</b>
+			<select id="clip-mode" class="cesium-button">
+				<option value="clip-inside">保留区域内</option>
+				<option value="clip-outside">保留区域外</option>
+			</select>
+		</div>
+		<div>
+			<label>
+				<input type="checkbox" id="visibleLine" style="display:inline-block; vertical-align: middle;" checked>
+				<span style="display:inline-block; vertical-align: middle;">显示视频投放线</span>
+			</label>
+
+		</div>
+	</div>
+
+	<script type="text/javascript">
+		function onload(Cesium) {
+			var viewer = new Cesium.Viewer('cesiumContainer');
+			viewer.imageryLayers.addImageryProvider(new Cesium.BingMapsImageryProvider({
+				url: 'https://dev.virtualearth.net',
+				mapStyle: Cesium.BingMapsStyle.AERIAL,
+				key: URL_CONFIG.BING_MAP_KEY
+			}));
+
+			var scene = viewer.scene;
+			scene.shadowMap.darkness = 1.275; //设置第二重烘焙纹理的效果（明暗程度）
+			scene.skyAtmosphere.brightnessShift = 0.4;  //修改大气的亮度
+			scene.debugShowFramesPerSecond = true;
+			scene.hdrEnabled = false;
+			scene.sun.show = false;
+			// 01设置环境光的强度-新处理CBD场景
+			scene.lightSource.ambientLightColor = new Cesium.Color(0.65, 0.65, 0.65, 1);
+			// 添加光源
+			var position1 = new Cesium.Cartesian3.fromDegrees(116.261209157595, 39.3042238956531, 480);
+			//光源方向点
+
+			var targetPosition1 = new Cesium.Cartesian3.fromDegrees(116.261209157595, 39.3042238956531, 430);
+			var dirLightOptions = {
+				targetPosition: targetPosition1,
+				color: new Cesium.Color(1.0, 1.0, 1.0, 1),
+				intensity: 0.55
+			};
+			directionalLight_1 = new Cesium.DirectionalLight(position1, dirLightOptions);
+			scene.addLightSource(directionalLight_1);
+
+			if (!scene.pickPositionSupported) {
+				alert('不支持深度纹理,视频投放功能无法使用！');
+			}
+
+			$('#loadingbar').remove();
+			$('#toolbar').show();
+
+			var groundPromise = scene.addS3MTilesLayerByScp(URL_CONFIG.SCP_CBD_GROUND1, {
+				name: 'ground1'
+			});
+			var buildPromise = scene.addS3MTilesLayerByScp(URL_CONFIG.SCP_CBD_BUILD, {
+				name: 'build'
+			});
+			var lakePromise = scene.addS3MTilesLayerByScp(URL_CONFIG.SCP_CBD_LAKE, {
+				name: 'lake'
+			});
+			var treePromise = scene.addS3MTilesLayerByScp(URL_CONFIG.SCP_CBD_TREE, {
+				name: 'tree'
+			});
+			var roadPromise = scene.addS3MTilesLayerByScp(URL_CONFIG.SCP_CBD_ROAD, {
+					name: 'road'
+			});
+        	var bridgePromise = scene.addS3MTilesLayerByScp(URL_CONFIG.SCP_CBD_BRIDGE, {
+					name: 'bridge'
+			});
+			Cesium.when.all([groundPromise, buildPromise, lakePromise, treePromise,roadPromise,bridgePromise], function (layers) {
+				//图层加载完成,设置相机位置
+				scene.camera.setView({
+					destination: Cesium.Cartesian3.fromDegrees(116.4486, 39.9092, 91.3293),
+					orientation: {
+						heading: 3.179304500963121,
+						pitch: -0.46239072362282485,
+						roll: 6.283185307179583
+					}
+				});
+				for (var i = 0; i < layers.length; i++) {
+					layers[i].selectEnabled = false;
+				}
+				var videoElement = document.getElementById('trailer');
+
+				var projectionImage = new Cesium.ProjectionImage(scene);
+
+				var handler = new Cesium.DrawHandler(viewer, Cesium.DrawMode.Point);
+
+				handler.movingEvt.addEventListener(function (windowPosition) {
+					var last = scene.pickPosition(windowPosition);
+					//计算该点与视口位置点坐标的距离
+					var distance = Cesium.Cartesian3.distance(scene.camera.position, last);
+					if (distance > 0) {
+						//将鼠标当前点坐标转化成经纬度
+						var cartographic = Cesium.Cartographic.fromCartesian(last);
+						var longitude = Cesium.Math.toDegrees(cartographic.longitude);
+						var latitude = Cesium.Math.toDegrees(cartographic.latitude);
+						var height = cartographic.height;
+						//通过该点设置视频投放对象的距离及方向
+						projectionImage.setDistDirByPoint([longitude, latitude, height]);
+						projectionImage.distance = Number($("#distance").val());
+					}
+				});
+
+				//绘制裁剪面
+				var handlerPolygon = new Cesium.DrawHandler(viewer, Cesium.DrawMode.Polygon, 0);
+				handlerPolygon.drawEvt.addEventListener(function (result) {
+
+					var array = [].concat(result.object.positions);
+					var positions = [];
+					for (var i = 0, len = array.length; i < len; i++) {
+
+						var cartographic = Cesium.Cartographic.fromCartesian(array[i]);
+						var longitude = Cesium.Math.toDegrees(cartographic.longitude);
+						var latitude = Cesium.Math.toDegrees(cartographic.latitude);
+						var h = cartographic.height;
+						if (positions.indexOf(longitude) == -1 && positions.indexOf(latitude) == -1) {
+							positions.push(longitude);
+							positions.push(latitude);
+							positions.push(h);
+						}
+					}
+					handlerPolygon.polygon.show = false;
+					handlerPolygon.polyline.show = false;
+					projectionImage.addClipRegion({ name: 'test', position: positions });
+					handlerPolygon.deactivate();
+				});
+
+				function clearAndActive() {
+					projectionImage.distance = 0.1;
+					var wgsPosition = scene.camera.positionCartographic;
+					var longitude = Cesium.Math.toDegrees(wgsPosition.longitude);
+					var latitude = Cesium.Math.toDegrees(wgsPosition.latitude);
+					var height = wgsPosition.height;
+					projectionImage.viewPosition = [longitude, latitude, height];
+					projectionImage.horizontalFov = Number($("#horizontal").val());
+					projectionImage.verticalFov = Number($("#vertical").val());
+					projectionImage.setImage({
+						video: videoElement
+					});
+					projectionImage.removeAllClipRegion();
+					projectionImage.build();
+				}
+				$('#active').click(function (evt) {
+					clearAndActive();
+					handler.activate();
+				});
+				$('#clear').click(function (evt) {
+					clearAndActive();
+					handler.clear();
+					handlerPolygon.clear();
+				});
+				$('#horizontal').bind('input propertychange', function () {
+					var value = Number($(this).val());
+					projectionImage.horizontalFov = value;
+				});
+				$('#vertical').bind('input propertychange', function () {
+					var value = Number($(this).val());
+					projectionImage.verticalFov = value;
+				});
+				$('#distance').bind('input propertychange', function () {
+					var value = Number($(this).val());
+					projectionImage.distance = value;
+				});
+				$('#visibleLine').on("input propertychange", function (evt) {
+					projectionImage.hintLineVisible = $(this).prop("checked");
+				});
+				$("#cilpRegion").click(function (e) {
+					handlerPolygon.deactivate();
+					handlerPolygon.activate();
+				});
+				$("#clip-mode").on("input propertychange", function () {
+					clipMode = $(this).val() === 'clip-inside' ? Cesium.ModifyRegionMode.CLIP_INSIDE : Cesium.ModifyRegionMode.CLIP_OUTSIDE;
+					projectionImage.setClipMode(clipMode);
+				});
+			}, function (e) {
+				if (widget._showRenderLoopErrors) {
+					var title = '加载SCP失败，请检查网络连接状态或者url地址是否正确？';
+					widget.showErrorPanel(title, undefined, e);
+				}
+			});
+		}
+		if (typeof Cesium !== 'undefined') {
+			window.startupCalled = true;
+			onload(Cesium);
+		}
+	</script>
+</body>
+
+</html>

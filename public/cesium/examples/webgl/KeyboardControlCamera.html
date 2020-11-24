@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>键盘控制相机</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/config.js"></script>
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+</head>
+
+<body class="loading">
+<div id="cesiumContainer"></div>
+<div id='toolbar' class="param-container tool-bar">
+    <p>提示：</p>
+    <table>
+        <tbody>
+        <tr>
+            <td style="width: 50px;text-align:right;">Q键：</td>
+            <td>上移</td>
+        </tr>
+        <tr>
+            <td style="width: 50px;text-align:right;">E键：</td>
+            <td>下移</td>
+        </tr>
+        <tr>
+            <td style="width: 50px;text-align:right;">W键：</td>
+            <td>前进</td>
+        </tr>
+        <tr>
+            <td style="width: 50px;text-align:right;">S键：</td>
+            <td>后退</td>
+        </tr>
+        <tr>
+            <td style="width: 50px;text-align:right;">A键：</td>
+            <td>左移</td>
+        </tr>
+
+        <tr>
+            <td style="width: 50px;text-align:right;">D键：</td>
+            <td>右移</td>
+        </tr>
+
+        </tbody>
+    </table>
+</div>
+<script>
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer');
+        viewer.imageryLayers.addImageryProvider(new Cesium.BingMapsImageryProvider({
+            url: 'https://dev.virtualearth.net',
+            mapStyle: Cesium.BingMapsStyle.AERIAL,
+            key: URL_CONFIG.BING_MAP_KEY
+        }));
+        var scene = viewer.scene;
+        scene.shadowMap.darkness = 1.275; //设置第二重烘焙纹理的效果（明暗程度）
+        scene.skyAtmosphere.brightnessShift=0.4;  //修改大气的亮度
+        scene.debugShowFramesPerSecond = true;
+        scene.hdrEnabled = false;
+        scene.sun.show = false;
+        // 01设置环境光的强度-新处理CBD场景
+        scene.lightSource.ambientLightColor = new Cesium.Color(0.65, 0.65, 0.65, 1);
+        // 添加光源
+        var position1 = new Cesium.Cartesian3.fromDegrees(116.261209157595,  39.3042238956531, 480);
+        //光源方向点
+
+        var targetPosition1 = new Cesium.Cartesian3.fromDegrees(116.261209157595, 39.3042238956531,430);
+        var dirLightOptions = {
+            targetPosition: targetPosition1,
+            color: new Cesium.Color(1.0, 1.0, 1.0, 1),
+            intensity: 0.55
+        };
+        directionalLight_1 = new Cesium.DirectionalLight(position1, dirLightOptions);
+        scene.addLightSource(directionalLight_1);
+        var canvas = viewer.canvas;
+        canvas.setAttribute('tabindex', '0'); // needed to put focus on the canvas
+        canvas.onclick = function () {
+            canvas.focus();
+        };
+        var ellipsoid = scene.globe.ellipsoid;
+
+
+        var startMousePosition;
+        var mousePosition;
+        var flags = {
+            looking: false,
+            moveForward: false,
+            moveBackward: false,
+            moveUp: false,
+            moveDown: false,
+            moveLeft: false,
+            moveRight: false
+        };
+
+
+        //判断 按键 值对应的操作
+        function getFlagForKeyCode(keyCode) {
+            switch (keyCode) {
+                case 'W'.charCodeAt(0):
+                    return 'moveForward';//前进
+                case 'S'.charCodeAt(0):
+                    return 'moveBackward';//后退
+                case 'Q'.charCodeAt(0):
+                    return 'moveUp';//上移
+                case 'E'.charCodeAt(0):
+                    return 'moveDown';//下移
+                case 'D'.charCodeAt(0):
+                    return 'moveRight';//右移
+                case 'A'.charCodeAt(0):
+                    return 'moveLeft';//左移
+                default:
+                    return undefined;
+            }
+        }
+
+        //按下
+        document.addEventListener('keydown', function (e) {
+            var flagName = getFlagForKeyCode(e.keyCode);
+            if (typeof flagName !== 'undefined') {
+                flags[flagName] = true;
+            }
+        }, false);
+
+        //抬起
+        document.addEventListener('keyup', function (e) {
+            var flagName = getFlagForKeyCode(e.keyCode);
+            if (typeof flagName !== 'undefined') {
+                flags[flagName] = false;
+            }
+        }, false);
+
+        viewer.clock.onTick.addEventListener(function (clock) {
+            var camera = viewer.camera;
+
+            // Change movement speed based on the distance of the camera to the surface of the ellipsoid.
+            var cameraHeight = ellipsoid.cartesianToCartographic(camera.position).height;
+            var moveRate = cameraHeight / 100.0;
+
+            if (flags.moveForward) {
+                camera.moveForward(moveRate);
+            }
+            if (flags.moveBackward) {
+                camera.moveBackward(moveRate);
+            }
+            if (flags.moveUp) {
+                camera.moveUp(moveRate);
+            }
+            if (flags.moveDown) {
+                camera.moveDown(moveRate);
+            }
+            if (flags.moveLeft) {
+                camera.moveLeft(moveRate);
+            }
+            if (flags.moveRight) {
+                camera.moveRight(moveRate);
+            }
+        });
+
+        try {
+            var promise = scene.open(URL_CONFIG.SCENE_CBD);
+            Cesium.when(promise, function (layers) {
+
+            }, function (e) {
+                if (widget._showRenderLoopErrors) {
+                    var title = '加载SCP失败，请检查网络连接状态或者url地址是否正确？';
+                    widget.showErrorPanel(title, undefined, e);
+                }
+            });
+        } catch (e) {
+            if (widget._showRenderLoopErrors) {
+                var title = '渲染时发生错误，已停止渲染。';
+                widget.showErrorPanel(title, undefined, e);
+            }
+        }
+
+    }
+    if (typeof Cesium !== 'undefined') {
+        window.startupCalled = true;
+        onload(Cesium);
+    }
+</script>
+</body>
+
+</html>

@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>绘制编辑线面</title>
+    <link rel="stylesheet" type="text/css" href="../../Build/Cesium/Widgets/widgets.css">
+    <link rel="stylesheet" type="text/css" href="./css/pretty.css">
+    <link rel="stylesheet" type="text/css" href="./js/view-design/dist/styles/iview.css">
+    <script type="text/javascript" src="./js/vue.min.js"></script>
+    <script type="text/javascript" src="./js/view-design/dist/iview.min.js"></script>
+    <script type="text/javascript" src="./js/jquery.min.js"></script>
+    <script src="./js/tooltip.js"></script>
+    <script type="text/javascript" src="./js/config.js"></script>
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div id="app"></div>
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+<script type="text/javascript">
+    function onload(Cesium) {
+        const vueInstance = new Vue({
+            el: '#app',
+            template: `
+        <div>
+            <div
+                style="width: 280px;"
+                class="tool-bar param-container"
+                v-if="isShowToolbar"
+            >
+                <div style="margin-bottom: 4px;">
+                    <Button @click="handleOpenClick">打开KML文件</Button>
+                    <Button @click="handleSaveClick">保存KML文件</Button>
+                </div>
+                <Button @click="handleBtnsClick(2)">绘制并编辑线</Button>
+                <Button @click="handleBtnsClick(3)">绘制并编辑面</Button>
+                <div style="margin-top:5px;">
+                    <Checkbox style="width:108px;" v-model="isEditZ">是否编辑Z值</Checkbox>
+                    <Button @click="handleClearAll">清空</Button>
+                </div>
+                <input ref="fileInput" type="file" accept=".kml" style="display: none;">
+            </div>
+        </div>
+        `,
+            data() {
+                return {
+                    isShowToolbar: false,
+                    isEditZ: true,
+                    isDrawing: false
+                }
+            },
+            watch: {
+                isEditZ(val) {
+                    if (this.editHandler) {
+                        this.editHandler.isEditZ = val;
+                    }
+                },
+                isDrawing(val) {
+                    this.enableBodyDrawCur(val);
+                }
+            },
+            mounted() {
+                this.tooltip = window.createTooltip(document.body);
+                this.onload(Cesium);
+            },
+            methods: {
+                onload(Cesium) {
+                    window.Cesium = Cesium;
+                    this.drawingEntity = null;
+                    this.currentDrawContext = null;
+                    // 初始化viewer并加载影像地图
+                    let viewer = this.viewer = new Cesium.Viewer('cesiumContainer', {
+                        infoBox: false, // 提示框
+                        selectionIndicator: false, // 聚焦失效
+                    });
+                    var scene = viewer.scene;
+
+                    scene.shadowMap.darkness = 1.275; //设置第二重烘焙纹理的效果（明暗程度）
+                    scene.skyAtmosphere.brightnessShift = 0.4;  //修改大气的亮度
+                    scene.debugShowFramesPerSecond = true;
+                    scene.hdrEnabled = false;
+                    scene.sun.show = false;
+                    // 01设置环境光的强度-新处理CBD场景
+                    scene.lightSource.ambientLightColor = new Cesium.Color(0.65, 0.65, 0.65, 1);
+                    // 添加光源
+                    var position1 = new Cesium.Cartesian3.fromDegrees(116.261209157595, 39.3042238956531, 480);
+                    //光源方向点
+
+                    var targetPosition1 = new Cesium.Cartesian3.fromDegrees(116.261209157595, 39.3042238956531, 430);
+                    var dirLightOptions = {
+                        targetPosition: targetPosition1,
+                        color: new Cesium.Color(1.0, 1.0, 1.0, 1),
+                        intensity: 0.55
+                    };
+                    directionalLight_1 = new Cesium.DirectionalLight(position1, dirLightOptions);
+                    scene.addLightSource(directionalLight_1);
+
+                    // viewer.imageryLayers.addImageryProvider(new Cesium.BingMapsImageryProvider({
+                    //   url: 'https://dev.virtualearth.net',
+                    //   mapStyle: Cesium.BingMapsStyle.AERIAL, // 航拍图像
+                    //   key: URL_CONFIG.BING_MAP_KEY
+                    // }));
+                    this.widget = this.viewer.cesiumWidget;
+                    try {
+                        // 打开所发布三维服务下的所有图层
+                        let promise = this.viewer.scene.open(URL_CONFIG.SCENE_CBD);
+                        Cesium.when(promise, (layers) => {
+                            // 设置相机位置、视角，便于观察场景
+                            this.viewer.scene.camera.setView({
+                                destination: Cesium.Cartesian3.fromDegrees(116.4563, 39.8969, 553),
+                                orientation: {
+                                    heading: 5.901089214916513,
+                                    pitch: -0.40668579780875524,
+                                    roll: 6.281842456812987
+                                }
+                            });
+                            for(let i = 0;
+                        i < layers.length;
+                        i++
+                    )
+                        {
+                            layers[i].selectEnabled = false;
+                        }
+                        if (!scene.pickPositionSupported) {
+                            alert('不支持深度纹理,无法拾取位置！');
+                        }
+                    },
+                        e =>
+                        {
+                            if (this.widget._showRenderLoopErrors) {
+                                let title = '加载SCP失败，请检查网络连接状态或者url地址是否正确？';
+                                this.widget.showErrorPanel(title, undefined, e);
+                            }
+                        }
+                    )
+                        ;
+                    } catch (e) {
+                        if (this.widget._showRenderLoopErrors) {
+                            let title = '渲染时发生错误，已停止渲染。';
+                            this.widget.showErrorPanel(title, undefined, e);
+                        }
+                    }
+                    // 切换编辑对象
+                    let selectHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+                    selectHandler.setInputAction(position => {
+                        let editHandler = this.editHandler;
+                    let entity = viewer.selectedEntity;
+                    // console.log(entity)
+                    if (this.isDrawing) {
+                        return;
+                    }
+                    ;
+                    if (!editHandler) return;
+                    if (!entity) {
+                        editHandler.clear();
+                    } else {
+                        if (entity._polyline || entity._polygon) {
+                            // console.log('selected activate', entity.polyline.positions.getValue());
+                            editHandler.deactivate();
+                            editHandler.setEditObject(entity);
+                            editHandler.activate();
+                        }
+                    }
+                },
+                    Cesium.ScreenSpaceEventType.LEFT_CLICK
+                )
+                    ;
+                    $('#loadingbar').remove();
+                    this.isShowToolbar = true;
+                },
+                // 按钮事件处理函数
+                handleBtnsClick(value) {
+                    switch (value) {
+                        case 1:
+                            this.drawPoint(this.handleEdit);
+                            break;
+                        case 2:
+                            this.drawLine(this.handleEdit);
+                            break;
+                        case 3:
+                            this.drawPolygon(this.handleEdit);
+                            break;
+                        default:
+                            break;
+                    }
+                },
+                // 打开文件
+                handleOpenClick() {
+                    let self = this;
+                    let viewer = this.viewer;
+                    let fileInput = this.$refs.fileInput;
+                    fileInput.onchange = function (evt) {
+                        let files = evt.target.files;
+                        if (files.length > 0) {
+                            let file = evt.target.files[0];
+                            let fileReader = new FileReader();
+                            // console.log(file)
+                            fileReader.onload = function () {
+                                viewer.dataSources.add(Cesium.KmlDataSource.load(new Blob([this.result]), {
+                                    camera: viewer.scene.camera,
+                                    canvas: viewer.scene.canvas,
+                                })).then(function (kmlDataSource) {
+                                    let entities = kmlDataSource.entities;
+                                    let item = entities.values[entities.values.length - 1];
+                                    self.handleEdit(item);
+                                    viewer.zoomTo(entities);
+                                });
+                                fileInput = null;
+                                fileReader = null;
+                            }
+                            fileReader.readAsText(file);
+                        }
+                        fileInput.value = null;
+                    }
+                    fileInput.click();
+                },
+                // 下载文件
+                handleSaveClick() {
+                    let funDownload = function (content, filename) {
+                        let eleLink = document.createElement('a');
+                        eleLink.download = filename;
+                        eleLink.style.display = 'none';
+                        // 字符内容转变成blob地址
+                        let blob = new Blob([content]);
+                        eleLink.href = URL.createObjectURL(blob);
+                        // 触发点击
+                        document.body.appendChild(eleLink);
+                        eleLink.click();
+                        // 然后移除
+                        document.body.removeChild(eleLink);
+                    };
+                    let entities = new Cesium.EntityCollection();
+                    let dataSources = this.viewer.dataSources;
+                    for (let i = 0, j = dataSources.length; i < j; i++) {
+                        for (let v of dataSources.get(i).entities.values) {
+                            entities.add(v);
+                        }
+                    }
+                    for (let v of this.viewer.entities.values) {
+                        entities.add(v);
+                    }
+
+                    if (entities.values.length) {
+                        let promise = Cesium.exportKml({entities: entities});
+                        promise.then(function (e) {
+                            funDownload(e.kml, new Date().getTime() + '.kml');
+                        });
+                    } else {
+                        this.$Message.error({
+                            background: true,
+                            content: '当前场景没有entity！',
+                            duration: 5,
+                            closable: true
+                        })
+                    }
+                },
+                handleClearAll() {
+                    if (this.editHandler) {
+                        this.editHandler.clear();
+                        this.editHandler.deactivate();
+                    }
+                    this.changeDrawContext(null);
+                    this.viewer.entities.removeAll();
+                    let dataSources = this.viewer.dataSources;
+                    dataSources.removeAll();
+                },
+                // 画线
+                drawLine(callback) {
+                    const positions = [];
+                    const viewer = this.viewer;
+                    let poly, entity;
+                    this.isDrawing = true;
+                    let handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+                    this.changeDrawContext(handler);
+                    let polyLineEntity = (function () {
+                        function _(positions) {
+                            // polyline 配置
+                            this.options = {
+                                name: 'polyline',
+                                polyline: {
+                                    show: true,
+                                    positions: [],
+                                    material: Cesium.Color.GREEN,
+                                    width: 3
+                                }
+                            }
+                            this.positions = positions;
+                            this._init();
+                        }
+
+                        _.prototype._init = function () {
+                            let _self = this;
+                            this.options.polyline.positions = new Cesium.CallbackProperty(function () {
+                                return _self.positions;
+                            }, false);
+                            drawingEntity = entity = viewer.entities.add(this.options);
+                        }
+                        return _;
+                    })()
+                    handler.setInputAction(function (movement) {
+                        let ent = viewer.selectedEntity;
+                        // 当前选中的entity不是绘制的entity，就return。实现绘制时也能选择
+                        if (ent && drawingEntity !== ent) {
+                            return;
+                        }
+                        isDrawing = true;
+                        let cartesian = viewer.scene.pickPosition(movement.position);
+                        if (positions.length == 0) {
+                            positions.push(cartesian.clone());
+                        }
+                        positions.push(cartesian);
+                    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+                    handler.setInputAction((movement) => {
+                        this.tooltip.showAt(movement.endPosition, '<p>左键点击确定折线中间点</p><p>右键单击结束绘制</p>');
+                    let cartesian = viewer.scene.pickPosition(movement.endPosition);
+                    if (positions.length >= 2) {
+                        if (!Cesium.defined(poly)) {
+                            poly = new polyLineEntity(positions);
+                        } else {
+                            if (cartesian != undefined) {
+                                positions.pop();
+                                positions.push(cartesian);
+                            }
+                        }
+                    }
+                },
+                    Cesium.ScreenSpaceEventType.MOUSE_MOVE
+                )
+                    ;
+                    handler.setInputAction((movement) => {
+                        positions.pop();
+                    this.tooltip.setVisible(false);
+                    this.isDrawing = false;
+                    handler = handler && handler.destroy(); // clear and empty the handler.
+                    callback && callback.call(this, entity);
+                    // 继续绘制
+                    // this.drawLine(this.handleEdit);
+                },
+                    Cesium.ScreenSpaceEventType.RIGHT_CLICK
+                )
+                    ;
+                },
+                // 画面
+                drawPolygon(callback) {
+                    let viewer = this.viewer;
+                    const positions = [];
+                    let poly, entity;
+                    this.isDrawing = true;
+                    let handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+                    // 改变当前画图上下文
+                    this.changeDrawContext(handler);
+                    let polygonEntity = (function () {
+                        function _(positions) {
+                            // polygon 配置
+                            this.options = {
+                                name: '多边形',
+                                polygon: {
+                                    hierarchy: {
+                                        positions: []
+                                    },
+                                    perPositionHeight: true,
+                                    material: Cesium.Color.ORANGE.withAlpha(0.5),
+                                }
+                            }
+                            this.positions = positions;
+                            this._init();
+                        }
+
+                        _.prototype._init = function () {
+                            let _self = this;
+                            this.options.polygon.hierarchy = new Cesium.CallbackProperty(function () {
+                                return {
+                                    positions: _self.positions
+                                };
+                            }, false);
+                            drawingEntity = entity = viewer.entities.add(this.options);
+                        }
+                        return _;
+                    })()
+                    handler.setInputAction(function (movement) {
+                        let cartesian = viewer.scene.pickPosition(movement.position);
+                        let ent = viewer.selectedEntity;
+                        if (ent && drawingEntity !== ent) {
+                            return;
+                        }
+                        isDrawing = true;
+                        if (positions.length == 0) {
+                            positions.push(cartesian.clone());
+                        }
+                        positions.push(cartesian);
+                    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+                    handler.setInputAction((movement) => {
+                        this.tooltip.showAt(movement.endPosition, '<p>左键点击确定折线中间点</p><p>右键单击结束绘制</p>');
+                    let cartesian = viewer.scene.pickPosition(movement.endPosition);
+                    if (positions.length >= 2) {
+                        if (!Cesium.defined(poly)) {
+                            poly = new polygonEntity(positions);
+                        } else {
+                            if (cartesian != undefined) {
+                                positions.pop();
+                                positions.push(cartesian);
+                            }
+                        }
+                    }
+                },
+                    Cesium.ScreenSpaceEventType.MOUSE_MOVE
+                )
+                    ;
+                    handler.setInputAction((movement) => {
+                        positions.pop();
+                    this.tooltip.setVisible(false);
+                    this.isDrawing = false;
+                    handler = handler && handler.destroy(); // clear and empty the handler.
+                    callback && callback.call(this, entity);
+                    // this.drawPolygon(this.handleEdit);
+                },
+                    Cesium.ScreenSpaceEventType.RIGHT_CLICK
+                )
+                    ;
+                },
+                // 编辑
+                handleEdit(entity) {
+                    // console.log(entity)
+                    let viewer = this.viewer;
+                    let editHandler = this.editHandler;
+                    if (!entity) {
+                        editHandler && editHandler.deactivate();
+                        return;
+                    }
+                    if (!editHandler) {
+                        this.editHandler = new Cesium.EditHandler(viewer, entity);
+                        // console.log(this.editHandler)
+                        this.editHandler.isEditZ = this.isEditZ;
+                        this.editHandler.activate();
+                    } else {
+                        editHandler.deactivate();
+                        editHandler.setEditObject(entity);
+                        editHandler.activate();
+                    }
+                },
+                // 是否显示笔形的鼠标
+                enableBodyDrawCur(isActive) {
+                    const viewer = this.viewer;
+                    this.viewer.enableCursorStyle = true;
+                    let list = document.body.classList;
+                    list.remove('drawCur');
+                    if (isActive) {
+                        viewer.enableCursorStyle = false;
+                        viewer._element.style.cursor = '';
+                        list.add('drawCur');
+                    }
+                },
+                // 切换画线画面
+                changeDrawContext(context) {
+                    this.currentDrawContext && !this.currentDrawContext.isDestroyed() && this.currentDrawContext.destroy();
+                    this.currentDrawContext = context;
+                }
+            }
+        });
+    }
+    if (typeof Cesium !== 'undefined') {
+        window.startupCalled = true;
+        onload(Cesium);
+    }
+
+
+    // const onload = vueInstance.onload.bind(vueInstance);
+
+</script>
+</body>
+</html>

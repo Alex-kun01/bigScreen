@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>多屏同步-视口设置</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/config.js"></script>
+    <script type="text/javascript" src="./js/require.min.js" data-main="js/main"></script>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+<script>
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer', {
+            contextOptions: {
+                // 视口设置为2x2，显示第一行第一列
+                monitorTable: {
+                    rows: 2,
+                    cols: 2,
+                    curRow: 0,
+                    curCol: 1
+                }
+            }
+        });
+        viewer.imageryLayers.addImageryProvider(new Cesium.BingMapsImageryProvider({
+            key : URL_CONFIG.BING_MAP_KEY,//可至官网（https://www.bingmapsportal.com/）申请key
+            url : URL_CONFIG.BINGMAP
+        }));
+        var scene = viewer.scene,
+            camera = scene.camera;
+
+        function loadDataAndEffect() {
+            var cityGeo;
+            var migration = {};
+            var toCity = '武汉';
+            function getCityGeo(callback) {
+                $.ajax({
+                    url: './data/city_coordinates.json',
+                    type: "get",
+                    dataType: 'json',
+                    success: function (data) {
+                        cityGeo = data;
+                        callback();
+                    }
+                });
+            }
+
+            function drawPolyLine(from, to) {
+                function generateCurve(startPoint, endPoint){
+                    let addPointCartesian = new Cesium.Cartesian3();
+                    Cesium.Cartesian3.add(startPoint, endPoint, addPointCartesian);
+                    let midPointCartesian = new Cesium.Cartesian3();
+                    Cesium.Cartesian3.divideByScalar(addPointCartesian, 2, midPointCartesian);
+                    let midPointCartographic = Cesium.Cartographic.fromCartesian(midPointCartesian);
+                    midPointCartographic.height = Cesium.Cartesian3.distance(startPoint, endPoint) / 10;
+                    let midPoint = new Cesium.Cartesian3();
+                    Cesium.Ellipsoid.WGS84.cartographicToCartesian(midPointCartographic, midPoint);
+                    let spline = new Cesium.CatmullRomSpline({
+                        times: [0.0, 0.5, 1.0],
+                        points: [startPoint, midPoint, endPoint]
+                    });
+                    let curvePointsArr = [];
+                    for(let i = 0, len = 300; i < len; i++){
+                        curvePointsArr.push(spline.evaluate(i / len));
+                    }
+                    return curvePointsArr;
+                }
+                function getColor(val) {
+                    var color = Cesium.Color.WHITE;
+                    if (val > 15) {
+                        color = Cesium.Color.fromCssColorString('rgb(127,  17,  0)');
+                    } else if (val > 1) {
+                        color = Cesium.Color.fromCssColorString('rgb(189,  19,  22)');
+                    } else if (val > 0.2) {
+                        color = Cesium.Color.fromCssColorString('rgb(230,  75,   69)');
+                    } else if (val > 0.1) {
+                        color = Cesium.Color.fromCssColorString('rgb(255,   140,  113)');
+                    } else if (val > 0.05) {
+                        color = Cesium.Color.fromCssColorString('rgb(253,   210,  160)');
+                    } else if (val > 0) {
+                        color = Cesium.Color.fromCssColorString('rgb(255,   242,  207)');
+                    }
+                    return color;
+                }
+                var fromPoint = Cesium.Cartesian3.fromDegrees(cityGeo[to][0], cityGeo[to][1], 100);
+                for (var key in from) {
+                    let temp = cityGeo[key];
+                    if (!temp) {
+                        continue;
+                    }
+                    var curvePoints = generateCurve(
+                        fromPoint,
+                        Cesium.Cartesian3.fromDegrees(temp[0], temp[1], 100),
+                    );
+                    var color = getColor(from[key]);
+                    viewer.entities.add({
+                        name: 'qianxi-polyline',
+                        polyline: {
+                            positions: curvePoints,
+                            width: 1,
+                            material: color
+                        }
+                    });
+                    viewer.entities.add({
+                        polyline: {
+                            positions: curvePoints,
+                            width: 7,
+                            material: new Cesium.PolylineTrailMaterialProperty({ // 尾迹线材质
+                                color: color,
+                                trailLength : 0.2,
+                                period : 5.0
+                            })
+                        }
+                    });
+                    viewer.entities.add({ // 起点
+                        description: 'start-point',
+                        name: 'start-point_' + key,
+                        position: Cesium.Cartesian3.fromDegrees(temp[0], temp[1], 100),
+                        point: {
+                            color: Cesium.Color.fromCssColorString('#fca325'),
+                            pixelSize: migration[key] < 5 ? 5 : migration[key]
+                        }
+                    });
+                    viewer.entities.add({
+                        description: 'start-point',
+                        name: 'start-point_' + key,
+                        position: Cesium.Cartesian3.fromDegrees(temp[0], temp[1], 100000),
+                        label: {
+                            text: key + '\n' + from[key] + '%',
+                            font: '20px Microsoft YaHei',
+                            fillColor: Cesium.Color.fromCssColorString('rgb(220, 220, 220)'),
+
+                            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(1, 5000000),
+                            style: Cesium.LabelStyle.FILL,
+                            scaleByDistance : new Cesium.NearFarScalar(1, 1, 5000000, 0.8),
+                        }
+                    });
+                }
+                //泛光开关
+                viewer.scene.bloomEffect.show = true;
+                viewer.scene.bloomEffect.threshold = 0.78;
+                viewer.scene.bloomEffect.bloomIntensity = 1.96;
+            }
+
+            $.ajax({
+                url: './data/WuhanMigration.js?&callback=jsonp_1582008383093_8536626',
+                dataType: "jsonp",
+                jsonp: "callback",
+                jsonpCallback: "jsonp_1582008383093_8536626",
+                success: function (data) {
+                    var list = data.data.list;
+                    for (var i = 0; i < list.length; i++) {
+                        var temp = list[i];
+                        migration[temp.city_name.slice(0, -1)] = temp.value;
+                    }
+                    getCityGeo(drawPolyLine.bind(null, migration, toCity));
+                }
+            });
+        }
+
+        loadDataAndEffect();
+
+        // 连接websocket，需要自行搭建websocket服务器。
+        // 可参考下面的NodeJS端的实现，runWebsocketServer函数
+        // function getWS(onMessageFunc) {
+        //     var ws;
+        //     if (!window.WebSocket) {
+        //         window.WebSocket = window.MozWebSocket;
+        //     }
+        //     if (window.WebSocket) {
+        //         ws = new WebSocket("ws://localhost:8001/ws");
+        //         ws.onmessage = onMessageFunc;
+        //         ws.onopen = function(event) {
+        //             console.log("connection opened.");
+        //         };
+        //         ws.onclose = function(event) {
+        //             console.log("connection closed.");
+        //         };
+        //     } else {
+        //         throw new Error('浏览器不支持ws');
+        //     }
+        //     window.onbeforeunload = function() {
+        //         ws.onclose = function() {};
+        //         ws.close();
+        //     };
+        //
+        //     var originalSend = ws.send;
+        //
+        //     function send(message) {
+        //         if (!ws) {
+        //             return;
+        //         }
+        //         if (ws.readyState === WebSocket.OPEN) {
+        //             originalSend.call(ws, message);
+        //         } else {
+        //             // throw new Error('no connection');
+        //             console.log('no conn')
+        //         }
+        //     }
+        //
+        //     ws.send = send;
+        //     return ws;
+        // }
+        // function onMessage(message) {
+        //     msg = JSON.parse(message.data);
+        //     camera.setView(msg);
+        // }
+        // var ws = getWS(onMessage);
+        // function send() {
+        //     ws.send(JSON.stringify({
+        //         destination: camera.positionWC,
+        //         orientation: new Cesium.HeadingPitchRoll(camera.heading, camera.pitch, camera.roll),
+        //     }));
+        // }
+        // var msg;
+        // scene.postRender.addEventListener(function() {
+        //     // if (isOperate) {
+        //         send();
+        //     // }
+        // });
+        //
+        // var isOperate = false;
+        //
+        // window.onfocus = function () {
+        //     isOperate = true;
+        // }
+        //
+        // window.onblur = function () {
+        //     isOperate = false;
+        // }
+
+
+        $('#loadingbar').remove();
+    }
+
+    // Note that this is a NodeJS side websocket server using npm package 'ws'.
+    // Running this function in NodeJS for the camera pose sync.
+    function runWebsocketServer () {
+        // eslint-disable-next-line no-undef
+        const WebSocket = require('ws');
+
+        const server = new WebSocket.Server({ port: 8001 });
+
+        server.on('open', function open() {
+            console.log('connected');
+        });
+
+        server.on('close', function close() {
+            console.log('closed');
+        });
+
+        server.on('connection', function connection(ws, req) {
+            const ip = req.connection.remoteAddress;
+            const port = req.connection.remotePort;
+            const clientName = ip + port;
+
+            console.log('%s is connected', clientName);
+
+            ws.on('message', function incoming(message) {
+                // console.log('received: %s from %s', message, clientName);
+                // 广播消息给所有客户端
+                server.clients.forEach(function each(client) {
+                    if (client.readyState === WebSocket.OPEN && client !== ws) {
+                        client.send(message);
+                    }
+                });
+            });
+        });
+    }
+</script>
+</body>
+</html>

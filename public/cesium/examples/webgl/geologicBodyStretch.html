@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>地质体拉伸</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <link href="./css/bootstrap-new.min.css" rel="stylesheet">
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+    <style>
+        .spinner-boot {
+            width: 69px;
+            float: right;
+        }
+        .spinner-boot input {
+            text-align: right;
+            background-color: #444;
+            color: white;
+            opacity:0.6;
+            padding-right: 50%;
+            border-radius: 4px!important;
+        }
+        .input-group-btn-vertical {
+            position: absolute;
+            right: 8px;
+            white-space: nowrap;
+            width: 10px;
+            margin-top: 2px;
+            margin-right: 2px;
+            top: 4px;
+            vertical-align: middle;
+            display: table-cell;
+            z-index: 999;
+        }
+        .input-group-btn-vertical > .btn {
+            display: block;
+            float: none;
+            position: relative;
+            border-radius: 0;
+            border: none!important;
+            padding: 0;
+            width: 16px;
+            height: 12px;
+            background-color: #444;
+        }
+        .input-group-btn-vertical > .btn:first-child {
+            border-top-right-radius: 4px;
+            color: white;
+            opacity:0.6;
+            font-size: 8px;
+        }
+        .input-group-btn-vertical > .btn:last-child {
+            margin-top: -2px;
+            color: white;
+            opacity:0.6;
+            font-size: 8px;
+            border-bottom-right-radius: 4px;
+        }
+        .dzt-title {
+            width:98px;
+            font-size:14px;
+            font-family:Microsoft YaHei;
+            font-weight:400;
+            color:rgba(255,255,255,1);
+            opacity:0.8;
+        }
+        #toolbar {
+            margin: 43px 0 0 43px;
+            width:224px;
+            background:rgba(42,42,42,1);
+            opacity:0.9;
+            border-radius:4px;
+            padding-top: 12px;
+        }
+        .dzt-operate {
+            margin: 14px 0 11px 0px;
+        }
+        .dzt-tip {
+            line-height: 32px;
+        }
+        .divide {
+            height: 1px;
+            margin-top: 4px;
+            /* border-bottom: 5x solid white; */
+            background-color: #3C3C3C;
+        }
+    </style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+<div id="toolbar" class="param-container tool-bar">
+    <div class="dzt-title">地质体垂直拉伸</div>
+    <div class="divide"></div>
+    <div class="dzt-operate">
+        <span class="dzt-tip">Z轴方向拉伸高度</span>
+        <div class="input-group spinner-boot">
+            <input type="text" class="form-control" value="1" id="zScale">
+            <div class="input-group-btn-vertical">
+                <button class="btn btn-default" type="button"><i class="glyphicon glyphicon-triangle-top"></i></button>
+                <button class="btn btn-default" type="button"><i class="glyphicon glyphicon-triangle-bottom"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    $('.spinner-boot .btn:first-of-type').on('click', function() {
+        let val = parseInt($('.spinner-boot input').val()) + 1;
+        $('.spinner-boot input').val(val).trigger('input');
+    });
+    $('.spinner-boot .btn:last-of-type').on('click', function() {
+        let val = parseInt($('.spinner-boot input').val()) - 1;
+        if (val < 0) {
+            val = 0;
+        }
+        $('.spinner-boot input').val(val).trigger('input');
+    });
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer');
+
+        let scene = viewer.scene;
+        scene.globe.show = false;
+
+        try {
+            scene.camera.setView({
+               destination: new Cesium.Cartesian3(-2167835.4408, 4423497.534529, 4095839.284566),
+               orientation:{
+                   heading: 4.02932,
+                   pitch: -0.237966,
+               }
+            });
+
+            var cells = [
+                './data/model/dizhiti/Layer1.s3m',
+                './data/model/dizhiti/Layer2.s3m',
+                './data/model/dizhiti/Layer3.s3m',
+                './data/model/dizhiti/Layer4.s3m',
+                './data/model/dizhiti/Layer5.s3m',
+                './data/model/dizhiti/Layer6.s3m',
+            ];
+
+            var point = [115.019082651804,39.0115415990412,-1226.22602844238];
+
+
+            var keyMap = {};
+
+
+            for (let i = 0, j = cells.length; i < j; i++) {
+                let key = cells[i];
+                let state = new Cesium.DynamicObjectState({
+                    id: 1,
+                    longitude: point[0],
+                    latitude: point[1],
+                    altitude: point[2],
+                    scale: new Cesium.Cartesian3(1,1,1)
+                });
+                keyMap[key] = [state];
+            }
+
+            var layer = new Cesium.DynamicLayer3D(scene.context, cells);
+            layer.updateInterval = 50;
+            scene.primitives.add(layer);
+
+
+            for (let key in keyMap) {
+                layer.updateObjectWithModel(key, keyMap[key]);
+            }
+
+            $('.spinner-boot input').on('input propertyChange', function () {
+                var z = +$('.spinner-boot input').val();
+                console.log(z)
+                for (let key in keyMap) {
+                    keyMap[key][0].scale = new Cesium.Cartesian3(1,1,z);
+                    keyMap[key][0].lockOrientation = true;
+                    layer.updateObjectWithModel(key, keyMap[key]);
+                }
+            })
+        } catch (e) {
+            console.error(e)
+        }
+
+        $('#loadingbar').remove();
+    }
+    if (typeof Cesium !== 'undefined') {
+        window.startupCalled = true;
+        onload(Cesium);
+    }
+</script>
+</body>
+</html>

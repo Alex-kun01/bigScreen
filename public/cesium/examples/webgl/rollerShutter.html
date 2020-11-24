@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>模型卷帘</title>
+    <link rel="stylesheet" type="text/css" href="../../Build/Cesium/Widgets/widgets.css">
+    <link rel="stylesheet" type="text/css" href="./css/pretty.css">
+    <link rel="stylesheet" type="text/css" href="./js/view-design/dist/styles/iview.css">
+    <script type="text/javascript" src="./js/vue.min.js"></script>
+    <script type="text/javascript" src="./js/view-design/dist/iview.min.js"></script>
+    <script type="text/javascript" src="./js/config.js"></script>
+    <script src="./js/jquery.min.js"></script>
+    <script type="text/javascript" src="./js/require.min.js" data-main="js/main"></script>
+    <style>
+        .vertical-slider {
+            position: absolute;
+            left: 50%;
+            top: 0px;
+            background-color: #D3D3D3;
+            width: 5px;
+            height: 100%;
+            z-index: 9999;
+        }
+        .horizontal-slider {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            background-color: #D3D3D3;
+            width: 100%;
+            height: 5px;
+            z-index: 9999;
+        }
+        #vertical-slider-left {
+            left: 33%;
+        }
+        #vertical-slider-right {
+            left: 66%;
+        }
+        #horizontal-slider-top {
+            top: 33%;
+        }
+        #horizontal-slider-bottom {
+            top: 66%;
+        }
+
+        #tool-bar {
+            margin: 43px 0 0 43px;
+            width:224px;
+            background:rgba(42,42,42,1);
+            opacity:0.9;
+            border-radius:4px;
+            padding-top: 12px;
+        }
+        .rs-title {
+            width:98px;
+            font-size:14px;
+            font-family:Microsoft YaHei;
+            font-weight:400;
+            color:rgba(255,255,255,1);
+            opacity:0.8;
+        }
+        .divide {
+            height: 1px;
+            margin-top: 4px;
+            background-color: #3C3C3C;
+        }
+        .rs-operate {
+            margin: 14px 0 11px 0px;
+        }
+        .operate-title {
+            font-size: 14px;
+
+        }
+        .rs-layer-item {
+            margin-top: 14px;
+            margin-bottom: 16px;
+            font-size:12px;
+            opacity:0.8;
+        }
+
+    </style>
+</head>
+<body>
+<div id="cesiumContainer">
+    <div class="vertical-slider" id="vertical-slider-left" data-slider="left"></div>
+    <div style="display: none;" class="vertical-slider" id="vertical-slider-right" data-slider="right"></div>
+    <div style="display: none;" class="horizontal-slider" id="horizontal-slider-top" data-slider="top"></div>
+    <div style="display: none;" class="horizontal-slider" id="horizontal-slider-bottom" data-slider="bottom"></div>
+</div>
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+<div id="app"></div>
+<script type="text/x-template" id="vue-template">
+    <div id="tool-bar" class="param-container tool-bar" v-if="isShow">
+        <div class="rs-title">模型卷帘</div>
+        <div class="divide"></div>
+        <div class="rs-operate">
+            <div>
+                <span class="operate-title">参与卷帘图层</span>
+                <ul id="layer-list" style="padding: 0;margin: 0.5rem 0;" v-for="item in layerList">
+                    <Checkbox v-model="item.checked">{{ item.name }}</Checkbox>
+                </ul>
+            </div>
+            <div>
+                <span class="operate-title">参与卷帘影像图层</span>
+                <ul id="imagery-layer" style="padding: 0;margin: 0.5rem 0;" v-for=" item in imageryLayerList">
+                    <Checkbox v-model="item.checked">{{ item.name }}</Checkbox>
+                </ul>
+            </div>
+            <div class="divider"></div>
+            
+            <div>
+                <span class="rs-operate">卷帘模式</span>
+                <div>
+                    <i-switch v-model="useRoll" />
+                    <label>
+                        <span
+                            class="rs-layer-item"
+                            style="vertical-align: middle;">使用卷帘</span>
+                    </label>
+                </div>
+                <div style="padding: 0;margin: 0.5rem 0;">
+                    <Checkbox v-model="isLRMode">
+                        左右卷帘
+                        <Radio-group v-model="lrMode" v-if="isLRMode">
+                            <Radio :label="1">屏蔽左侧</Radio>
+                            <Radio :label="2">屏蔽右侧</Radio>
+                        </Radio-group>
+                    </Checkbox>
+                    <div>
+                        <Checkbox v-model="isTBMode">
+                            上下卷帘
+                            <Radio-group v-model="tbMode" v-if="isTBMode">
+                                <Radio :label="4">屏蔽上侧</Radio>
+                                <Radio :label="8">屏蔽下侧</Radio>
+                            </Radio-group>
+                        </Checkbox>
+                    </div>
+                    <Checkbox v-model="isCustomMode">自定义卷帘</Checkbox>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>
+<script type="text/javascript">
+    const vm = new Vue({
+        el: '#app',
+        template: '#vue-template',
+        data() {
+            return {
+                isShow:false,
+                useRoll: true,
+                isLRMode: true,
+                isTBMode: false,
+                isCustomMode: false,
+                tbMode: 4,
+                lrMode: 1,
+                layerList: [],
+                imageryLayerList: [],
+                rollerShutterConfig: { // 卷帘配置参数，以对象方式实现地址传递
+                    startX: 0.33,
+                    startY: 0.33,
+                    endX: 0.66,
+                    endY: 0.66,
+                    index: 0.66,
+                    mode: 1,
+                }
+            }
+        },
+        mounted() {
+            // this.scratchSwipeRegion = new Cesium.BoundingRectangle(0, 0, 1, 1);
+        },
+        methods: {
+            onload(Cesium) {
+                window.Cesium = Cesium;
+                let vm = this;
+                let viewer = vm.viewer = new Cesium.Viewer('cesiumContainer');
+                this.scratchSwipeRegion = new Cesium.BoundingRectangle();
+                //使用本地的一张图片初始化地球，建议图片长宽比2:1
+                viewer.imageryLayers.addImageryProvider(new Cesium.SingleTileImageryProvider({
+                    url: './images/worldimage.jpg'
+                }));
+                let scene = viewer.scene;
+                scene.shadowMap.darkness = 1.275; //设置第二重烘焙纹理的效果（明暗程度）
+                scene.skyAtmosphere.brightnessShift=0.4;  //修改大气的亮度
+                scene.debugShowFramesPerSecond = true;
+                scene.hdrEnabled = false;
+                scene.sun.show = false;
+                // 01设置环境光的强度-新处理CBD场景
+                scene.lightSource.ambientLightColor = new Cesium.Color(0.65, 0.65, 0.65, 1);
+                // 添加光源
+                var position1 = new Cesium.Cartesian3.fromDegrees(116.261209157595,  39.3042238956531, 480);
+                //光源方向点
+
+                var targetPosition1 = new Cesium.Cartesian3.fromDegrees(116.261209157595, 39.3042238956531,430);
+                var dirLightOptions = {
+                    targetPosition: targetPosition1,
+                    color: new Cesium.Color(1.0, 1.0, 1.0, 1),
+                    intensity: 0.55
+                };
+                directionalLight_1 = new Cesium.DirectionalLight(position1, dirLightOptions);
+                scene.addLightSource(directionalLight_1);
+                let widget = viewer.cesiumWidget;
+                try {
+                    let promise = scene.open(URL_CONFIG.SCENE_CBD);
+                    Cesium.when(promise, function (layers) {
+                        scene.camera.setView({
+                            destination: new Cesium.Cartesian3(-2179147.1754770577, 4380398.6133004315, 4092339.895225123),
+                            orientation: {
+                                heading: 0.5500959500406575,
+                                pitch: -0.18431625594320877,
+                                roll: 1.0658141036401503e-14
+                            }
+                        });
+                        for (var layer of layers) {
+                            // 添加图层列表 供选择参与卷帘的图层
+                            vm.layerList.push({
+                                name: layer.name,
+                                checked: true
+                            });
+                        }
+                        for (let i = 0, j = viewer.imageryLayers._layers.length; i < j; i++) {
+                            let layer = viewer.imageryLayers._layers[i]
+                            layer.name = `影像图层${i}`;
+                            vm.imageryLayerList.push({
+                                name: layer.name,
+                                checked: false
+                            });
+                        }
+                        vm.setRollerShutterSplit(scene, vm.rollerShutterConfig);
+                        bindSliderEvt(scene, vm.rollerShutterConfig);
+                        vm.isShow = true;
+                        $('#loadingbar').remove();
+                    }, function (e) {
+                        if (widget._showRenderLoopErrors) {
+                            var title = '加载SCP失败，请检查网络连接状态或者url地址是否正确？';
+                            widget.showErrorPanel(title, undefined, e);
+                        }
+                    }).otherwise(function (e) {
+                        console.error(e)
+                    });
+                   
+                } catch (e) {
+                    if (widget._showRenderLoopErrors) {
+                        let title = '渲染时发生错误，已停止渲染。';
+                        widget.showErrorPanel(title, undefined, e);
+                    }
+                }
+
+                function bindSliderEvt(scene, rollerShutterConfig) {
+                    let verticalSliderLeft = document.getElementById('vertical-slider-left'); // 垂直分割条
+                    let verticalSliderRight = document.getElementById('vertical-slider-right'); // 垂直分割条
+                    let horizontalSliderTop = document.getElementById('horizontal-slider-top'); // 水平分割条
+                    let horizontalSliderBottom = document.getElementById('horizontal-slider-bottom'); // 水平分割条
+                    verticalSliderLeft.addEventListener('mousedown', function (e) {
+                        mouseDown(e, 1);
+                    }, false);
+                    verticalSliderRight.onmousedown = function (e) {
+                        mouseDown(e, 3);
+                    };
+                    horizontalSliderTop.onmousedown = function (e) {
+                        mouseDown(e, 2);
+                    };
+                    horizontalSliderBottom.onmousedown = function (e) {
+                        mouseDown(e, 4);
+                    };
+
+                    window.addEventListener('resize', function () {
+                        let width = $('body').width();
+                        let height = $('body').height();
+                        verticalSliderLeft.style.left = rollerShutterConfig.startX * width + 'px';
+                        verticalSliderRight.style.left = rollerShutterConfig.endX * width + 'px';
+                        horizontalSliderTop.style.top = rollerShutterConfig.startY * height + 'px';
+                        horizontalSliderBottom.style.top = rollerShutterConfig.endY * height + 'px';
+                    });
+
+                    document.addEventListener('mouseup', mouseUp, false);
+                    function mouseUp(e) {
+                        document.removeEventListener('mousemove', sliderMove, false);
+                    }
+
+                    function mouseDown(e, index) {
+                        rollerShutterConfig.index = index;
+                        document.addEventListener('mousemove', sliderMove, false);
+                    }
+
+                    function sliderMove(e) {
+                        if (e.preventDefault) {
+                            e.preventDefault();
+                        } else {
+                            e.returnValue = false;
+                        }
+
+                        switch (rollerShutterConfig.index) {
+                            case 1:
+                                verticalSliderLeft.style.left = e.clientX + 'px';
+                                rollerShutterConfig.startX = e.clientX / $('body').width();
+                                break;
+                            case 2:
+                                horizontalSliderTop.style.top = e.clientY + 'px';
+                                rollerShutterConfig.startY = e.clientY / $('body').height();
+                                break;
+                            case 3:
+                                verticalSliderRight.style.left = e.clientX + 'px';
+                                rollerShutterConfig.endX = e.clientX / $('body').width();
+                                break;
+                            case 4:
+                                horizontalSliderBottom.style.top = e.clientY + 'px';
+                                rollerShutterConfig.endY = e.clientY / $('body').height();
+                                break;
+                        }
+                        vm.setRollerShutterSplit(scene, rollerShutterConfig);
+                    }
+                
+                }
+            },
+            
+            setRollerShutterSplit(scene, rollerShutterConfig) {
+                let startX = rollerShutterConfig.startX;
+                let startY = rollerShutterConfig.startY;
+                let endX = rollerShutterConfig.endX;
+                let endY = rollerShutterConfig.endY;
+                let scratchSwipeRegion = this.scratchSwipeRegion;
+
+                let mode = rollerShutterConfig.mode;
+                // 左右卷帘使用left slider滑动，上下卷帘使用top slider滑动
+                switch (mode) {
+                    case 1:
+                        Cesium.BoundingRectangle.unpack([startX, 0, 1, 1], 0, scratchSwipeRegion);
+                        break;
+                    case 2:
+                        Cesium.BoundingRectangle.unpack([0, 0, startX, 1], 0, scratchSwipeRegion);
+                        break;
+                    case 4:
+                        Cesium.BoundingRectangle.unpack([0, 0, 1, startY], 0, scratchSwipeRegion);
+                        break;
+                    case 8:
+                        Cesium.BoundingRectangle.unpack([0, startY, 1, 1], 0, scratchSwipeRegion);
+                        break;
+                    case 15:
+                        Cesium.BoundingRectangle.unpack([startX, startY, endX-startX, endY-startY], 0, scratchSwipeRegion);
+                        break;
+                    default:
+                        Cesium.BoundingRectangle.unpack([0, 0, 1, 1], 0, scratchSwipeRegion);
+                        break;
+                }
+
+                let s3mLayer = scene.layers.layerQueue;
+                for (let i = 0, j = s3mLayer.length; i < j; i++) {
+                    if (this.useRoll && this.layerList[i].checked) {
+                        s3mLayer[i].swipeEnabled = true;
+                        s3mLayer[i].swipeRegion = scratchSwipeRegion;
+                    } else {
+                        s3mLayer[i].swipeEnabled = false;
+                    }
+                }
+
+                let imageryLayer = this.viewer.imageryLayers._layers;
+                for (let i = 0, j = imageryLayer.length; i < j; i++) {
+                    if (this.useRoll && this.imageryLayerList[i].checked) {
+                        imageryLayer[i].swipeEnabled = true;
+                        imageryLayer[i].swipeRegion = scratchSwipeRegion;
+                    } else {
+                        imageryLayer[i].swipeEnabled = false;
+                    }
+                }
+            },
+
+            enableSlider(index) {
+                let verticalSliderLeft = document.getElementById('vertical-slider-left'); // 垂直分割条
+                let verticalSliderRight = document.getElementById('vertical-slider-right'); // 垂直分割条
+                let horizontalSliderTop = document.getElementById('horizontal-slider-top'); // 水平分割条
+                let horizontalSliderBottom = document.getElementById('horizontal-slider-bottom');
+                verticalSliderLeft.style.display = 'none';
+                verticalSliderRight.style.display = 'none';
+                horizontalSliderTop.style.display = 'none';
+                horizontalSliderBottom.style.display = 'none';
+                // if (!rollerShutterConfig.enabled) {
+                //     return;
+                // }
+                if (index & 1) {
+                    verticalSliderLeft.style.display = 'block';
+                }
+                if (index & 2) {
+                    verticalSliderRight.style.display = 'block';
+                }
+                if (index & 4) {
+                    horizontalSliderTop.style.display = 'block';
+                }
+                if (index & 8) {
+                    horizontalSliderBottom.style.display = 'block';
+                }
+            },
+        },
+        watch: {
+            useRoll(newVal) {
+                console.log(this.rollerShutterConfig.mode)
+                if (newVal) {
+                    if (this.rollerShutterConfig.mode == 1 || this.rollerShutterConfig.mode == 2)
+                        this.enableSlider(1);
+                    if (this.rollerShutterConfig.mode == 4 || this.rollerShutterConfig.mode == 8)
+                        this.enableSlider(4);
+                    if (this.rollerShutterConfig.mode == 15)
+                        this.enableSlider(15);
+                } else {
+                    this.enableSlider(0);
+                }
+                this.setRollerShutterSplit(this.viewer.scene, this.rollerShutterConfig);
+            },
+            isLRMode(newVal) {
+               if (newVal) {
+                   this.isTBMode = false;
+                   this.isCustomMode = false;
+                   this.enableSlider(1);
+                   this.rollerShutterConfig.mode = this.lrMode;
+               } else {
+                   if (!this.isCustomMode && !this.isTBMode) {
+                        this.enableSlider(0);
+                        this.rollerShutterConfig.mode = -1;
+                   }
+               }
+               this.setRollerShutterSplit(this.viewer.scene, this.rollerShutterConfig);
+            },
+            isTBMode(newVal) {
+               if (newVal) {
+                    this.isLRMode = false;
+                    this.isCustomMode = false;
+                    this.enableSlider(4);
+                    this.rollerShutterConfig.mode = this.tbMode;
+               } else {
+                   if (!this.isLRMode && !this.isCustomMode) {
+                        this.enableSlider(0);
+                        this.rollerShutterConfig.mode = -1;
+                   }
+               }
+               this.setRollerShutterSplit(this.viewer.scene, this.rollerShutterConfig);
+            },
+            isCustomMode(newVal) {
+               if (newVal) {
+                    this.isTBMode = false;
+                    this.isLRMode = false;
+                    this.enableSlider(15);
+                    this.rollerShutterConfig.mode = 15;
+               } else {
+                   if (!this.isLRMode && !this.isTBMode) {
+                        this.enableSlider(0);
+                        this.rollerShutterConfig.mode = -1;
+                   }
+               }
+               
+               this.setRollerShutterSplit(this.viewer.scene, this.rollerShutterConfig);
+            },
+            lrMode (newVal) {
+                this.rollerShutterConfig.mode = newVal;
+                // this.enableSlider(1);
+                this.setRollerShutterSplit(this.viewer.scene, this.rollerShutterConfig);
+                // console.log(this.rollerShutterConfig.mode)
+            },
+            tbMode (newVal) {
+                this.rollerShutterConfig.mode = newVal;
+                // this.enableSlider(4);
+                this.setRollerShutterSplit(this.viewer.scene, this.rollerShutterConfig);
+                // console.log(this.rollerShutterConfig.mode)
+            },
+            layerList: {
+                deep: true,
+                handler(newVal) {
+                    this.setRollerShutterSplit(this.viewer.scene, this.rollerShutterConfig);
+                }
+            },
+            imageryLayerList: {
+                deep: true,
+                handler(newVal) {
+                    this.setRollerShutterSplit(this.viewer.scene, this.rollerShutterConfig);
+                }
+            }
+        }
+    });
+
+    const onload = vm.onload.bind(vm);
+
+</script>

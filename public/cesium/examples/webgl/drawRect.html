@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>框选</title>
+    <link rel="stylesheet" href="../../Build/Cesium/Widgets/widgets.css">
+    <link rel="stylesheet" href="./css/pretty.css">
+    <link rel="stylesheet" href="./js/view-design/dist/styles/iview.css">
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+    <style>
+        .ivu-form-item-label, .ivu-select-selected-value {
+            color: white !important;
+        }
+
+        .ivu-select-selection, .ivu-select-dropdown {
+            background: #333;
+        }
+
+        .ivu-select-item:hover {
+            background: #666;
+            color: #888;
+        }
+
+        .ivu-select-item {
+            color: #888;
+        }
+
+        .ivu-select-item-selected {
+            color: white !important;
+            background: #555;
+        }
+    </style>
+</head>
+
+<body>
+<div id="app"></div>
+<div id="cesiumContainer"></div>
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+<script type="text/javascript" src="./js/vue.min.js"></script>
+<script type="text/javascript" src="./js/view-design/dist/iview.min.js"></script>
+<script type="text/javascript" src="./js/tooltip.js"></script>
+<script type="text/javascript" src="./js/jquery.min.js"></script>
+<script type="text/javascript" src="./js/underscore-min.1.4.4.js"></script>
+<script src="./js/config.js"></script>
+<script type="text/javascript" src="./js/require.min.js" data-main="js/main"></script>
+<script>
+    const vm = new Vue({
+        el: '#app',
+        template: `
+            <Form
+                style="width: 280px;"
+                class="tool-bar param-container"
+                v-if="isShowToolbar"
+                tabindex="0"
+            >
+                <div style="margin-bottom:4px;">
+                    <Checkbox v-model="isCallInMoving">实时选择</Checkbox>
+                </div>
+                <FormItem label="选择模式（按下Shift键开始框选）" style="margin-bottom: 18px;">
+                    <Select v-model="selectVal">
+                        <Option :value="1">重置模式</Option>
+                        <Option :value="2">并集模式</Option>
+                        <Option :value="4">交集模式</Option>
+                        <Option :value="8">减去模式</Option>
+                    </Select>
+                </FormItem>
+            </Form>
+        `,
+        data() {
+            return {
+                isShowToolbar: false,
+                selectVal: 1,
+                isCallInMoving: false
+            }
+        },
+        mounted() {
+            this.tooltip = createTooltip(document.body);
+        },
+        methods: {
+            onload(Cesium) {
+                let viewer = this.viewer = new Cesium.Viewer('cesiumContainer');
+                viewer.imageryLayers.addImageryProvider(new Cesium.BingMapsImageryProvider({
+                    url : 'https://dev.virtualearth.net',
+                    mapStyle : Cesium.BingMapsStyle.AERIAL,
+                    key : URL_CONFIG.BING_MAP_KEY
+                }));
+                let scene = viewer.scene;
+                let directLight = new Cesium.DirectionalLight(
+                    new Cesium.Cartesian3(
+                        -2180753.065987198,4379023.266141494,4092883.575045952
+                    ), {
+                        targetPosition: new Cesium.Cartesian3(
+                            -2180753.065987198,4379023.266141494,4092583.575045952
+                        ),
+                    }
+                );
+                scene.addLightSource(directLight);
+                let widget = viewer.cesiumWidget;
+                this.isShowToolbar = true;
+                $('#loadingbar').remove();
+                // pure object used as a set.
+                this.selectedObjs = Object.create(null, {});
+                this.resetIds = Object.create(null, {});
+                let that = this;
+
+                /**
+                 * @param dom ScreenSpaceEventHandler操作的dom节点，画的框会成为其子节点
+                 */
+                function DrawRectHandler(dom) {
+                    let startPoint,
+                        self = this,
+                        isShiftAndLeftDown = false,
+                        handler = new Cesium.ScreenSpaceEventHandler(dom),
+                        removalFunctions = [],
+                        rect = new Rect(dom);
+                    this.isDestroyed = false;
+                    this.activeEvt = new Cesium.Event();
+                    this.cancelEvt = new Cesium.Event();
+                    this.movingEvt = new Cesium.Event();
+                    this.drawEvt = new Cesium.Event();
+
+                    // div框
+                    function Rect(parentDom) {
+                        this.rect = document.createElement('div');
+                        this.rect.style.visibility = 'hidden';
+                        parentDom.appendChild(this.rect);
+                        this.leftTopPoint = new Cesium.Cartesian2();
+                        this.rightBottomPoint = new Cesium.Cartesian2();
+                        Rect.prototype.setPosition = function (startPoint, endPosition) {
+                            let w = endPosition.x - startPoint.x;
+                            let h = endPosition.y - startPoint.y;
+                            let left, top, width, height;
+                            if (w < 0) {
+                                left = endPosition.x;
+                                width = -w ;
+                            } else {
+                                left = startPoint.x;
+                                width = w;
+                            }
+                            if (h < 0) {
+                                top = endPosition.y;
+                                height = -h;
+                            } else {
+                                top = startPoint.y;
+                                height = h;
+                            }
+                            this.leftTopPoint = new Cesium.Cartesian2(left, top);
+                            this.rightBottomPoint = new Cesium.Cartesian2(left + width, top + height);
+                            this.rect.style = `position:fixed;top:${top}px;left:${left}px;width:${width}px;height:${height}px;border:2px dashed #333;`;
+                            this.setVisible(true);
+                        }
+                        Rect.prototype.setVisible = function (isVisible) {
+                            this.rect.style.visibility = isVisible ? 'visible' : 'hidden';
+                        }
+                        Rect.prototype.getRectPoint = function () {
+                            return {
+                                leftTopPoint: this.leftTopPoint,
+                                rightBottomPoint: this.rightBottomPoint
+                            }
+                        }
+                        Rect.prototype.destroy = function () {
+                            dom.removeChild(rect);
+                            this.rect = null;
+                        }
+                    }
+
+                    // canvas框
+                    function RectCanvas(parentDom) {
+                        let canvas = document.createElement('canvas'),
+                            ctx = canvas.getContext('2d');
+                        this.canvas = canvas;
+                        canvas.width = parentDom.clientWidth;
+                        canvas.height = parentDom.clientHeight;
+                        canvas.style = 'position:fixed;top:0;left:0;z-index:-1';
+                        parentDom.appendChild(canvas);
+                        this.leftTopPoint = new Cesium.Cartesian2();
+                        this.rightBottomPoint = new Cesium.Cartesian2();
+                        RectCanvas.prototype.setPosition = function (startPoint, endPosition) {
+                            let w = endPosition.x - startPoint.x;
+                            let h = endPosition.y - startPoint.y;
+                            let left, top, width, height;
+                            if (w < 0) {
+                                left = endPosition.x;
+                                width = -w ;
+                            } else {
+                                left = startPoint.x;
+                                width = w;
+                            }
+                            if (h < 0) {
+                                top = endPosition.y;
+                                height = -h;
+                            } else {
+                                top = startPoint.y;
+                                height = h;
+                            }
+                            this.leftTopPoint = new Cesium.Cartesian2(left, top);
+                            this.rightBottomPoint = new Cesium.Cartesian2(left + width, top + height);
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.strokeRect(left, top, width, height);
+                        }
+                        RectCanvas.prototype.setVisible = function (isVisible) {
+                            if (isVisible) {
+                                canvas.style.zIndex = '999';
+                            } else {
+                                canvas.style.zIndex = '-1';
+                            }
+                        }
+                        RectCanvas.prototype.getRectPoint = function () {
+                            return {
+                                leftTopPoint: this.leftTopPoint,
+                                rightBottomPoint: this.rightBottomPoint
+                            }
+                        }
+                        RectCanvas.prototype.destroy = function () {
+                            dom.removeChild(canvas);
+                            ctx = null;
+                            this.canvas = null;
+                        }
+                    }
+
+                    // 开关相机控制
+                    function setCameraCtrl(isActive) {
+                        let cameraCtrl = scene.screenSpaceCameraController;
+                        cameraCtrl.enableRotate = isActive;
+                        cameraCtrl.enableTranslate = isActive;
+                        cameraCtrl.enableZoom = isActive;
+                        cameraCtrl.enableTilt = isActive;
+                        cameraCtrl.enableLook = isActive;
+                    }
+
+                    // 鼠标cursor控制
+                    function toggleCursorStyle(isActive) {
+                        if (isActive) {
+                            viewer.enableCursorStyle = false;
+                            viewer._element.style.cursor = '';
+                            dom.style.cursor = 'default';
+                        } else {
+                            viewer.enableCursorStyle = true;
+                        }
+                    }
+
+                    // 初始化事件处理
+                    function initEvent() {
+                        handler.setInputAction(function (e) {
+                            isShiftAndLeftDown = true;
+                            startPoint = new Cesium.Cartesian2(e.position.x, e.position.y);                      
+                        }, Cesium.ScreenSpaceEventType.LEFT_DOWN, Cesium.KeyboardEventModifier.SHIFT);
+                        // shift松开时，始终将rect隐藏
+                        let keyUpFunction = function (e) {
+                            self.cancelEvt.raiseEvent();
+                            if (e.key = 'Shift' && isShiftAndLeftDown && !self.isDestroyed) {
+                                isShiftAndLeftDown = false;
+                                rect.setVisible(false);
+                            }
+                        }
+                        document.addEventListener('keyup', keyUpFunction);
+                        removalFunctions.push(function () {
+                            document.removeEventListener('keyup', keyUpFunction);
+                        });
+                        handler.setInputAction(function (e) {
+                            let endPosition = e.endPosition;
+                            self.activeEvt.raiseEvent(endPosition);
+                            if (!isShiftAndLeftDown) return;
+                            rect.setPosition(startPoint, endPosition);
+							rect.setVisible(true);
+                            self.movingEvt.raiseEvent(rect.getRectPoint());
+                        }, Cesium.ScreenSpaceEventType.MOUSE_MOVE, Cesium.KeyboardEventModifier.SHIFT);
+                        handler.setInputAction(function (e) {
+                            isShiftAndLeftDown = false;
+                            rect.setVisible(false);
+                            self.drawEvt.raiseEvent(rect.getRectPoint());
+                        }, Cesium.ScreenSpaceEventType.LEFT_UP, Cesium.KeyboardEventModifier.SHIFT);
+                        handler.setInputAction(function (e) {
+                            isShiftAndLeftDown = false;
+                            rect.setVisible(false);
+                        }, Cesium.ScreenSpaceEventType.LEFT_UP);
+                    }
+
+                    // 移除事件监听
+                    function removeEvent() {
+                        handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOWN, Cesium.KeyboardEventModifier.SHIFT);
+                        handler.removeInputAction(Cesium.ScreenSpaceEventType.MOUSE_MOVE, Cesium.KeyboardEventModifier.SHIFT);
+                        handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_UP, Cesium.KeyboardEventModifier.SHIFT);
+                        handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_UP);
+                    }
+
+                    DrawRectHandler.prototype.destroy = function () {
+                        if (this.isDestroyed) return;
+                        setCameraCtrl(true);
+                        removeEvent();
+                        for (let i = 0, j = removalFunctions.length; i < j; i++) {
+                            removalFunctions[i]();
+                        }
+                        handler.destroy();
+                        rect.destroy();
+                        rect = null;
+                        this.isDestroyed = true;
+                    }
+                    DrawRectHandler.prototype.activate = function () {
+                        if (this.isDestroyed) return;
+                        setCameraCtrl(false);
+                        toggleCursorStyle(true);
+                        initEvent();
+                    }
+                    DrawRectHandler.prototype.deactivate = function () {
+                        if (this.isDestroyed) return;
+                        setCameraCtrl(true);
+                        toggleCursorStyle(false);
+                        removeEvent();
+                    }
+                }
+
+
+                try {
+                    let promise1 = scene.open(URL_CONFIG.SCENE_RECT);
+                    // let promise1 = scene.open('http://localhost:8090/iserver/services/3D-Text01-HuaKuang/rest/realspace');
+                    Cesium.when(promise1, function (layers) {
+                        for (let layer of layers) {
+                            layer.selectColorType = 1;
+                            that.selectedObjs[layer.name] = [];
+                            that.resetIds[layer.name] = [];
+                        }
+                        //scene.camera.setView({
+                           // destination : new //Cesium.Cartesian3(-2180753.065987198,4379023.266141494,4092583.575045952),
+                           // orientation : {
+                               // heading : 4.0392222751147955,
+                                //pitch :0.010279641987852584,
+                               // roll : 1.240962888005015e-11
+                        //    }
+                       // });
+                        let drawRect = that.drawRect = new DrawRectHandler(document.body);
+                        // res为框的左上点与右下点的相对于给定dom节点的坐标
+                        drawRect.drawEvt.addEventListener(function (res) {
+                            for (let layer of layers) {
+                                layer.selectColorType = 1;
+                            }
+                            that.tooltip.setVisible(false);
+                            let selectedColor = new Cesium.Color(1, 0, 0, 1);
+                            scene.pickRect(res.leftTopPoint, res.rightBottomPoint);
+                            let objs = scene.getPickRectIDs();
+                            let selectedObjs = that.selectedObjs;
+                            let resetIds = that.resetIds;
+                            for (let k in selectedObjs) {
+                                scene.layers.find(k).removeObjsColor(selectedObjs[k]);
+                            }
+                            for (let layer of layers) {
+                                let layerName = layer.name;
+                                let layerSlt = objs.find(e => e.layerName === layerName);
+                                let sltIds = (layerSlt && layerSlt.ids) || [];
+                                let lastIds = selectedObjs[layerName];
+                                switch (that.selectVal) {
+                                    case 1:
+                                        resetIds[layerName] = selectedObjs[layerName];
+                                        selectedObjs[layerName] = sltIds;
+                                        break;
+                                    case 2:
+                                        resetIds[layerName] = [];
+                                        selectedObjs[layerName] = _.union(lastIds, sltIds);
+                                        break;
+                                    case 4:
+                                        selectedObjs[layerName] = _.intersection(lastIds, sltIds);
+                                        break;
+                                    case 8:
+                                        selectedObjs[layerName] = _.difference(lastIds, sltIds);
+                                        break;
+                                    default:
+                                        break;
+                                }
+                                layer.setObjsColor(selectedObjs[layerName], selectedColor);
+                            }
+                        });
+                        drawRect.movingEvt.addEventListener(function (res) {
+                            that.tooltip.showAt(res.rightBottomPoint,
+                                '<p>松开鼠标左键以结束选择区域</p>'
+                            );
+                            if (that.isCallInMoving) {
+                                for (let layer of layers) {
+                                    layer.selectColorType = 1;
+                                }
+                                scene.pickRect(res.leftTopPoint, res.rightBottomPoint);
+                            }
+                        });
+                        drawRect.activeEvt.addEventListener(function (position) {
+                            that.tooltip.showAt(position,
+                                '<p>点击鼠标左键以开始选择区域</p>'
+                            );
+                        });
+                        drawRect.cancelEvt.addEventListener(function () {
+                            that.tooltip.setVisible(false);
+                        })
+
+                        let canvas = document.querySelector('div.cesium-widget canvas');
+                        canvas.setAttribute('tabindex', '0'); // needed to put focus on the canvas
+                        canvas.focus();
+                        document.addEventListener('keydown', function (e) {
+                            if (e.key === 'Shift') {
+                                drawRect.activate();
+                            }
+                        });
+                        document.addEventListener('keyup', function (e) {
+                            if (e.key === 'Shift') {
+                                drawRect.deactivate();
+                            }
+                        });
+                    }, function () {
+                        let title = '加载SCP失败，请检查网络连接状态或者url地址是否正确？';
+                        widget.showErrorPanel(title, undefined, e);
+                    }).then(function () {
+
+                    }, function (e) {
+                        console.log(e)
+                    });
+                } catch (e) {
+                    if (widget._showRenderLoopErrors) {
+                        let title = '渲染时发生错误，已停止渲染。';
+                        widget.showErrorPanel(title, undefined, e);
+                    }
+                }
+
+            },
+        }
+    });
+
+    const onload = vm.onload.bind(vm);
+
+</script>
+</body>
+
+</html>

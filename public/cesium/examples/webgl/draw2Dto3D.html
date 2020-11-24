@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>绘制-二维转三维</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <script src="./js/bootstrap-select.min.js"></script>
+    <script src="./js/tooltip.js"></script>
+    <script src="./js/config.js"></script>
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+<div id="toolbar" class="param-container tool-bar">
+    <button type="button" id="point" class="button black">绘制点</button>
+    <button type="button" id="point2Dto3D" class="button black">二维点转三维点</button>
+    <button type="button" id="polyline" class="button black">绘制线</button>
+    <button type="button" id="line2Dto3D" class="button black">二维线转三维线</button>
+    <button type="button" id="clear" class="button black">清除</button>
+</div>
+<script type="text/javascript">
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer', {
+            //创建地形服务提供者的实例，url为SuperMap iServer发布的TIN地形服务
+            terrainProvider: new Cesium.CesiumTerrainProvider({
+                url: URL_CONFIG.ZF_TERRAIN,
+                isSct: true//地形服务源自SuperMap iServer发布时需设置isSct为true
+            })
+        });
+        //添加SuperMap iServer发布的影像服务
+        viewer.imageryLayers.addImageryProvider(new Cesium.SuperMapImageryProvider({
+            url: URL_CONFIG.ZF_IMG
+        }));
+        var clampMode = 0; // 空间模式
+        var scene = viewer.scene;
+        var widget = viewer.cesiumWidget;
+        //设置相机位置、视角
+        viewer.scene.camera.setView({
+            destination: new Cesium.Cartesian3(-1206939.1925299785, 5337998.241228442, 3286279.2424502545),
+            orientation: {
+                heading: 1.4059101895600987,
+                pitch: -0.20917672793046682,
+                roll: 2.708944180085382e-13
+            }
+        });
+
+
+        var tooltip = createTooltip(document.body);
+
+        var handlerPoint = new Cesium.DrawHandler(viewer, Cesium.DrawMode.Point);
+        handlerPoint.activeEvt.addEventListener(function (isActive) {
+            if (isActive == true) {
+                viewer.enableCursorStyle = false;
+                viewer._element.style.cursor = '';
+                $('body').removeClass('drawCur').addClass('drawCur');
+            } else {
+                viewer.enableCursorStyle = true;
+                $('body').removeClass('drawCur');
+            }
+        });
+        handlerPoint.movingEvt.addEventListener(function (windowPosition) {
+            tooltip.showAt(windowPosition, '<p>点击绘制一个点</p>');
+        });
+        var point;//存储画点的节点
+        handlerPoint.drawEvt.addEventListener(function (result) {
+            tooltip.setVisible(false);
+            point = result.object.position;
+        });
+
+
+        var handlerLine = new Cesium.DrawHandler(viewer, Cesium.DrawMode.Line);
+        handlerLine.activeEvt.addEventListener(function (isActive) {
+            if (isActive == true) {
+                viewer.enableCursorStyle = false;
+                viewer._element.style.cursor = '';
+                $('body').removeClass('drawCur').addClass('drawCur');
+            } else {
+                viewer.enableCursorStyle = true;
+                $('body').removeClass('drawCur');
+            }
+        });
+        handlerLine.movingEvt.addEventListener(function (windowPosition) {
+            if (handlerLine.isDrawing) {
+                tooltip.showAt(windowPosition, '<p>左键点击确定折线中间点</p><p>右键单击结束绘制</p>');
+            } else {
+                tooltip.showAt(windowPosition, '<p>点击绘制第一个点</p>');
+            }
+        });
+
+        var linePoints;//存储画线的节点
+        handlerLine.drawEvt.addEventListener(function (result) {
+            tooltip.setVisible(false);
+            // result.object.show = false;
+            linePoints = result.object.positions;
+        });
+
+        $('#point').click(function () {
+            deactiveAll();
+            handlerPoint.activate();
+        });
+
+        $('#polyline').click(function () {
+            deactiveAll();
+            handlerLine.activate();
+        });
+
+        $('#point2Dto3D').click(function () {
+            if (point) {
+                var geometries = [];
+                var cartographic = Cesium.Cartographic.fromCartesian(point);
+                var longitude = Cesium.Math.toDegrees(cartographic.longitude);
+                var latitude = Cesium.Math.toDegrees(cartographic.latitude);
+
+                var geometry = new Cesium.GeoPoint3D({
+                    x: longitude,
+                    y: latitude,
+                    z: 0//此处是二维点，高度为0
+                });
+                geometries.push(geometry);
+
+
+                //利用提取三维点的空间服务
+                var extractvector3dParameter = {
+                    geometries: geometries,
+                    sceneName: "dxyx_ios",
+                    layerName: "DatasetDEM_1@sichuanTer",
+                    interpolationDistance: 0
+                };
+                var url = "http://www.supermapol.com/realspace/services/spatialAnalysis-dxyx_ios/restjsr/spatialanalyst/geometry/3d/extractvector3d.json";
+                var queryData = JSON.stringify(extractvector3dParameter);
+
+                //先发送POST请求
+                $.ajax({
+                    url: url,
+                    async: true,
+                    data: queryData,
+                    method: "POST"
+                }).done(function (data) {
+                    //再发送一次GET请求  获取到运算结果
+                    $.ajax({
+                        url: data.newResourceLocation + ".json",
+                        method: "GET"
+                    }).done(function (data) {
+                        //失败 没有内容
+                        if (data.geometries == null) {
+                            return;
+                        }
+                        console.log(data.geometries);
+
+                        //重新添加 基于地形获取高程点 的三维线
+                        var newPositions = [];
+                        var newPoint;
+                        for (var i = 0; i < data.geometries.length; i++) {
+                            newPoint = data.geometries[i].points[0];
+                            newPositions.push(Cesium.Cartesian3.fromDegrees(newPoint.x, newPoint.y, newPoint.z));//从地形获取的高度值
+                        }
+
+                        var point3D = viewer.entities.add({
+                            name: '3D Point',
+                            position: Cesium.Cartesian3.fromDegrees(newPoint.x, newPoint.y, newPoint.z),
+                            point: {
+                                pixelSize: 5,
+                                color: new Cesium.Color(0, 1, 1)
+                            }
+                        });
+                    })
+                });
+            }
+
+        });
+
+        $('#line2Dto3D').click(function () {
+            if (linePoints) {
+                var geometries = [];
+                var point3dsArray = [];
+                var point3ds = new Cesium.Point3Ds();
+                for (var i = 0; i < linePoints.length; i++) {
+                    var position = linePoints[i];
+
+                    var cartographic = Cesium.Cartographic.fromCartesian(position);
+                    var longitude = Cesium.Math.toDegrees(cartographic.longitude);
+                    var latitude = Cesium.Math.toDegrees(cartographic.latitude);
+
+                    var point3d = new Cesium.Point3D(longitude, latitude, 0);
+                    point3ds.add(point3d);
+                }
+                point3dsArray.push(point3ds);
+
+                var geoLine3D = new Cesium.GeoLine3D(point3dsArray);
+                geometries.push(geoLine3D);
+
+
+                //利用提取三维点的空间服务
+                var extractvector3dParameter = {
+                    geometries: geometries,
+                    sceneName: "dxyx_ios",
+                    layerName: "DatasetDEM_1@sichuanTer",
+                    interpolationDistance: 1.0
+                };
+                var url = "http://www.supermapol.com/realspace/services/spatialAnalysis-dxyx_ios/restjsr/spatialanalyst/geometry/3d/extractvector3d.json";
+                var queryData = JSON.stringify(extractvector3dParameter);
+
+                //先发送POST请求
+                $.ajax({
+                    url: url,
+                    async: true,
+                    data: queryData,
+                    method: "POST"
+                }).done(function (data) {
+                    //再发送一次GET请求  获取到运算结果
+                    $.ajax({
+                        url: data.newResourceLocation + ".json",
+                        method: "GET"
+                    }).done(function (data) {
+                        //失败 没有内容
+                        if (data.geometries == null) {
+                            return;
+                        }
+                        console.log(data.geometries);
+
+                        //重新添加 基于地形获取高程点 的三维线
+                        var newPositions = [];
+                        for (var i = 0; i < data.geometries[0].points.length; i++) {
+                            var newPoint = data.geometries[0].points[i];
+                            newPositions.push(Cesium.Cartesian3.fromDegrees(newPoint.x, newPoint.y, newPoint.z));//从地形获取的高度值
+                        }
+
+                        var line3D = viewer.entities.add({
+                            name: '3D Line',
+                            polyline: {
+                                positions: newPositions,
+                                width: 5,
+                                material: Cesium.Color.BLUE
+                            }
+                        });
+
+                    })
+                });
+            }
+
+        });
+
+        $('#clear').click(function () {
+            clearAll();
+            point = undefined;
+            linePoints = undefined;
+            viewer.entities.removeAll();
+        });
+        $('#toolbar').show();
+        $('#loadingbar').remove();
+
+        function deactiveAll() {
+            handlerPoint.deactivate();
+            handlerLine.deactivate();
+        }
+
+        function clearAll() {
+            handlerPoint.deactivate();
+            handlerLine.clear();
+        }
+
+        if (!scene.pickPositionSupported) {
+            alert('不支持深度拾取,无法进行鼠标交互绘制！');
+        }
+    }
+
+    if (typeof Cesium !== 'undefined') {
+        window.startupCalled = true;
+        onload(Cesium);
+    }
+</script>
+</body>
+</html>

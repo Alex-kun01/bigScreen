@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+	<meta name="viewport"
+		  content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+	<title>汽车灯光</title>
+	<link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+	<link href="./css/pretty.css" rel="stylesheet">
+	<script src="./js/jquery.min.js"></script>
+	<script src="./js/config.js"></script>
+	<script src="./js/supermap/SuperMap.Include.js"></script>
+	<script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+</head>
+<body class="loading">
+<div id="cesiumContainer"></div>
+<div class="params-setting-container">
+	<div class="params-setting-anchor" title="显示/隐藏参数面板"><span class="fui-expand"></span></div>
+	<div class="params-setting">
+		<div class="param-item">
+			<label for="bloomShow">开启泛光</label>
+			<input type="checkbox" id="bloomShow">
+		</div>
+		<div class="param-item">
+			<label>亮度阈值</label>
+			<input type="range" id="bloom-threshold" min="0" max="5" value="1" step="0.01" style="width: 170px">
+		</div>
+		<div class="param-item">
+			<label>泛光强度</label>
+			<input type="range" id="bloom-intensity" min="0" max="10" value="1" step="0.1" style="width: 170px">
+		</div>
+		<div class="param-item">
+			<label for="hdrShow">开启HDR</label>
+			<input type="checkbox" id="hdrShow">
+		</div>
+	</div>
+</div>
+<script>
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer', {
+            selectionIndicator: false,
+            infoBox: false,
+            timeline: true
+        });
+        var scene = viewer.scene;
+        var widget = viewer.cesiumWidget;
+        var promise = scene.open(URL_CONFIG.SCENE_OLYMPIC_NIGHT);
+        Cesium.when(promise, function (layers) {
+                for (var layer of layers) {
+                    layer.ignoreNormal = true; // 自动计算法线
+                }
+                // 设置相机位置，定位至模型
+                scene.camera.setView({
+                    destination: new Cesium.Cartesian3(-2171664.8741194746, 4377389.9019098645, 4099245.3416801775),
+                    orientation: {
+                        heading: 3.6961245248819816,
+                        pitch: -0.3768153879496654,
+                        roll: 0.000004751516053502769
+                    }
+                });
+
+                // PBR材质汽车
+                // 插值方式实现小车和车灯一起运动
+
+                var startTime = Cesium.JulianDate.fromDate(new Date(2019, 2, 25, 16));
+                var startPosition = Cesium.Cartesian3.fromDegrees(116.38594661245477, 39.989735121370416, 10.002096273005009);
+                var endTime = Cesium.JulianDate.addSeconds(startTime, 360, new Cesium.JulianDate());
+                var endPosition = Cesium.Cartesian3.fromDegrees(116.38580071375219, 39.99272069613555, 9.980259595438838);
+                viewer.clock.startTime = startTime.clone();
+                viewer.clock.stopTime = endTime.clone();
+                viewer.clock.currentTime = startTime.clone();
+                viewer.clock.clockRange = Cesium.ClockRange.LOOP_STOP; //Loop at the end
+                viewer.clock.multiplier = 10;
+                viewer.timeline.zoomTo(startTime, endTime);
+                var carPositionProperty = new Cesium.SampledPositionProperty();
+                carPositionProperty.addSample(startTime, startPosition);
+                carPositionProperty.addSample(endTime, endPosition);
+                var carPosition = carPositionProperty.getValue(viewer.clock.currentTime);
+
+                var heading = Cesium.Math.toRadians(-90);
+                var pitch = 0;
+                var roll = 0;
+                var hpr = new Cesium.HeadingPitchRoll(heading, pitch, roll);
+                var orientation = Cesium.Transforms.headingPitchRollQuaternion(carPosition, hpr);
+                var carModel = viewer.entities.add({
+                    name: "gltf",
+                    position: new Cesium.CallbackProperty(function() {
+                        return carPosition;
+                    }, false),
+					orientation: orientation,
+                    model: {
+                        uri: "./SampleData/models/Cesium_Ground.gltf",
+						scale: 0.6
+                    },
+                    viewFrom: new Cesium.Cartesian3(35, 70, 30)
+                });
+                viewer.trackedEntity = carModel;
+
+                var leftCarLampStartPosition = Cesium.Cartesian3.fromDegrees(116.38595326322925, 39.98975572725225, 10.665830771043607); //
+                var leftCarLampEndPosition = Cesium.Cartesian3.fromDegrees(116.38580845878249, 39.992744406566594, 10.64129734660025); //
+                var leftCarLampPositionProperty = new Cesium.SampledPositionProperty();
+                leftCarLampPositionProperty.addSample(startTime, leftCarLampStartPosition);
+                leftCarLampPositionProperty.addSample(endTime, leftCarLampEndPosition);
+
+                var leftCarLampStartTargetPosition = Cesium.Cartesian3.fromDegrees(116.38595050207651, 39.98980874071638, 10.482908424987503); //
+                var leftCarLampEndTargetPosition = Cesium.Cartesian3.fromDegrees(116.38580542316882, 39.99278198232638, 10.482908424987503); //
+                var leftCarLampTargetPositionProperty = new Cesium.SampledPositionProperty();
+                leftCarLampTargetPositionProperty.addSample(startTime, leftCarLampStartTargetPosition);
+                leftCarLampTargetPositionProperty.addSample(endTime, leftCarLampEndTargetPosition);
+
+                var rightCarLampStartPosition = Cesium.Cartesian3.fromDegrees(116.38593993666453, 39.98975572946803, 10.665830771043607); //
+                var rightCarLampEndPosition = Cesium.Cartesian3.fromDegrees(116.38579267081154, 39.99274379737282, 10.643625449866315);
+                var rightCarLampPositionProperty = new Cesium.SampledPositionProperty();
+                rightCarLampPositionProperty.addSample(startTime, rightCarLampStartPosition);
+                rightCarLampPositionProperty.addSample(endTime, rightCarLampEndPosition);
+
+                var rightCarLampStartTargetPosition = Cesium.Cartesian3.fromDegrees(116.38593744739272, 39.98980867961993, 10.482908424987503); //
+                var rightCarLampEndTargetPosition = Cesium.Cartesian3.fromDegrees(116.38578955198929, 39.99278138895286, 10.482908424987503);
+                var rightCarLampTargetPositionProperty = new Cesium.SampledPositionProperty();
+                rightCarLampTargetPositionProperty.addSample(startTime, rightCarLampStartTargetPosition);
+                rightCarLampTargetPositionProperty.addSample(endTime, rightCarLampEndTargetPosition);
+
+                var options = {
+                    color: new Cesium.Color(1, 1, 1, 1), //光源颜色
+                    distance: 20, // 光照距离
+                    decay: 0.5, // 衰减大小
+                    intensity: 15 // 光照强度
+                };
+
+                var leftCarLamp = new Cesium.SpotLight(leftCarLampPositionProperty.getValue(startTime), leftCarLampTargetPositionProperty.getValue(startTime), options);
+                var rightCarLamp = new Cesium.SpotLight(rightCarLampPositionProperty.getValue(startTime), rightCarLampTargetPositionProperty.getValue(startTime), options);
+                scene.addLightSource(leftCarLamp);
+                scene.addLightSource(rightCarLamp);
+                viewer.clock.onTick.addEventListener(function() {
+                    var currentTime = Cesium.JulianDate.clone(viewer.clock.currentTime);
+                    leftCarLamp.targetPosition = leftCarLampTargetPositionProperty.getValue(currentTime);
+                    leftCarLamp.position = leftCarLampPositionProperty.getValue(currentTime);
+                    rightCarLamp.targetPosition = rightCarLampTargetPositionProperty.getValue(currentTime);
+                    rightCarLamp.position = rightCarLampPositionProperty.getValue(currentTime);
+                    carPosition = carPositionProperty.getValue(currentTime);
+                });
+
+                // 泛光开关
+                $("#bloomShow").on("input change", function () {
+                    viewer.scene.bloomEffect.show = this.checked;
+                    viewer.scene.bloomEffect.threshold = $("#bloom-threshold").val();
+                    viewer.scene.bloomEffect.bloomIntensity = $("#bloom-intensity").val();
+                });
+                // HDR开关
+                $("#hdrShow").on("input change", function () {
+                    viewer.scene.hdrEnabled = this.checked;
+                });
+                // 调节泛光阈值
+                $("#bloom-threshold").on("input change", function () {
+                    $("#bloom-threshold-label").text(this.value);
+                    viewer.scene.bloomEffect.threshold = this.value;
+                });
+                // 调节泛光强度
+                $("#bloom-intensity").on("input change", function () {
+                    $("#bloom-intensity-label").text(this.value);
+                    viewer.scene.bloomEffect.bloomIntensity = this.value;
+                });
+                // 设置功能面板显隐
+                $(".params-setting-anchor").click(function () {
+                    $(".params-setting").toggleClass("params-setting-hide");
+                });
+            },
+            function () {
+                var title = '加载SCP失败，请检查网络连接状态或者url地址是否正确？';
+                widget.showErrorPanel(title, undefined, e);
+            });
+    }
+	if (typeof Cesium !== 'undefined') {
+		window.startupCalled = true;
+		onload(Cesium);
+	}
+</script>
+</body>
+</html>

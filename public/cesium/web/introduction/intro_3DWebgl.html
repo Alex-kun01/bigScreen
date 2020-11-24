@@ -1,0 +1,414 @@
+<!--********************************************************************
+* Copyright© 2000 - 2020 SuperMap Software Co.Ltd. All rights reserved.
+*********************************************************************-->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>iClient3D for WebGL产品介绍</title>
+    <link rel="shortcut icon" type="image/x-icon" href="../img/favicon.ico" />
+    <link rel="stylesheet" href="../css/introduction.css">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=no">
+    <script type="text/javascript" include='leaflet,iclient-leaflet,g6,isIntroduction' src="../js/include.js"></script>
+</head>
+
+<body class="hold-transition skin-blue">
+
+    <!--顶部导航-->
+    <header class="header-wrapper main-header icl-header"></header>
+    <script>
+        var identification = {
+            name: "WebGL"
+        };
+        var navigation = {
+            nav: {
+                title: "SuperMap iClient3D for WebGL",
+                path: "../../web/",
+                isLocal: window.isLocal
+            }
+        };
+        utils.loadTemplate(".icl-header", "../apis/header.html", navigation);
+
+    </script>
+    <!--顶部导航 end-->
+
+    <!--内容区-->
+    <div>
+        <div class="row">
+            <!--左侧导航-->
+            <div class="leftnav">
+                <nav class="icl-docs-sidebar hidden-print hidden-xs hidden-sm affix-top">
+                    <ul class="nav icl-docs-sidenav">
+                        <li><a href="#introduce">产品介绍</a></li>
+
+                        <li><a href="#download">下载</a></li>
+
+                        <li><a href="#techFeatures">技术特点</a></li>
+
+                        <li><a href="#modules">模块说明</a></li>
+
+                        <!--新特性-->
+                        <!-- <li><a href="#newAttributes">新特性</a></li> -->
+                        <!--新特性结束-->
+
+                        <!--<li><a href="#dependence">相关依赖</a></li>-->
+
+                        <li><a href="#license">许可说明</a></li>
+                    </ul>
+                    <a class="back-to-top" href="#top">
+                        返回顶部
+                    </a>
+                </nav>
+            </div>
+            <!--右侧内容区-->
+            <div class="col-md-9" id="main-content" role="main">
+                <div class="icl-docs-header">
+                    <h1 class="product">SuperMap iClient3D for WebGL</h1>
+                </div>
+                <!--产品介绍-->
+                <div class="section icl-docs-section">
+                    <h2 id="introduce" class="section-title">产品介绍</h2>
+                    <p class="lead">SuperMap iClient 3D for WebGL 是一款在服务式 GIS 架构体系中，
+                        无任何插件，跨浏览器的客户端产品。
+                        它基于Cesium开源框架,面向 HTML 5 的三维应用开发，快速构建内容丰富、响应迅速、体验流畅的三维真空间应用。
+                    </p>
+                    <!--<p class="lead">GitHub 托管地址：<a-->
+                            <!--href="https://github.com/SuperMap/iClient-JavaScript/tree/master/src/leaflet"-->
+                            <!--target="_blank">https://github.com/SuperMap/iClient-JavaScript/tree/master/src/leaflet</a>-->
+                    <!--</p>-->
+                </div>
+                <!--产品介绍End-->
+                <!--下载-->
+                <div class="section icl-docs-section">
+                    <h2 id="download" class="section-title">下载</h2>
+                    <div style="text-align:center;margin:0 auto;margin-top: 30px">
+                        <!--更换地址-->
+                        <!--<a target="_blank" href="../download/download.html"-->
+                        <a target="_blank" href="../downloads/download1.html"
+                            class="btn btn-outline-inverse btn-lg">进入下载页</a>
+                    </div>
+                </div>
+                <!--下载End-->
+                <!--技术特点-->
+                <div class="section icl-docs-section">
+                    <h2 id="techFeatures" class="section-title">技术特点</h2>
+                    <p class="lead"><strong>(1).灵活的交互设计与丰富的数据呈现方式:</strong></p>
+                    <li class="lead">SuperMap iServer 服务
+                    <ul class="lead">
+                        <li>地图服务</li>
+                        <li>数据服务</li>
+                        <li>量算服务</li>
+                        <li>查询服务</li>
+                        <li>空间关系服务</li>
+                        <li>专题图服务</li>
+                        <li>动态标绘服务</li>
+                        <li>空间分析服务类</li>
+                    </ul>
+                    </li>
+                    <li class="lead">SuperMap 云服务</li>
+                    <li class="lead">OGC 标准的服务 (WMS、WFS、WMTS、KML)</li>
+                    <li class="lead">其他第三方服务，如天地图等</li>
+                    <p class="lead"><strong>(2)与其他框架的兼容性</strong></p>
+                    <li class="lead">jQuery 1.6 +</li>
+                    <li class="lead">SuperMap iClient for JavaScript</li>
+                    <li class="lead">proj4js.js</li>
+
+
+                    <p class="lead" > <strong> (3)终端设备与浏览器兼容性 </strong></p>
+                    <div>
+                        <table width="100%" height="290" border="1px" style="border-color:#ddd">
+                            <tr>
+                                <th width="11%" rowspan="2" style="text-align:center; vertical-align:middle">
+                                    设备类型
+                                </th>
+                                <th colspan="5" style="text-align:center; vertical-align:middle">浏览器兼容性
+                                </th>
+                            </tr>
+                            <tr>
+                                <td width="19%" style="text-align:center; vertical-align:middle"> IE</td>
+                                <td width="18%" style="text-align:center; vertical-align:middle">Chrome</td>
+                                <td width="17%" style="text-align:center; vertical-align:middle">Firefox</td>
+                                <td width="18%" style="text-align:center; vertical-align:middle">Opera</td>
+                                <td width="28%" style="text-align:center; vertical-align:middle">Safari</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center; vertical-align:middle"> PC 机终端</td>
+                                <td style="text-align:center; vertical-align:middle">
+                                    10.0 及以上系列<br>
+                                    <font color="#e14d57">（推荐 11.0 及以上版本）<br>注：IE不支持深度纹理</font></td>
+                                <td style="text-align:center; vertical-align:middle">
+                                    41.0 及以上系列<br>
+                                    <font color="#e14d57">（推荐 45.0 及以上版本）</font></td>
+                                <td style="text-align:center; vertical-align:middle">
+                                    2.0 及以上系列<br>
+                                    <font color="#e14d57">（推荐 5.0 及以上版本）</font></td>
+                                <td style="text-align:center; vertical-align:middle">
+                                    9.5 及以上系列<br>
+                                    <font color="#e14d57">（推荐 10.0 及以上版本）</font></td>
+                                <td style="text-align:center; vertical-align:middle">
+                                    3.0 及以上系列<br>
+                                    <font color="#e14d57">（推荐 4.0 及以上版本)</font></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <p class="lead" > <strong> (4)移动设备支持 </strong></p>
+                    <ul  class="lead">
+                        <li class="lead">iPhone&nbsp&nbsp5及以上系列</li>
+                        <li class="lead">iPad&nbsp&nbsp&nbsp&nbsp&nbspAir及以上系列</li>
+                        <li class="lead">三星&nbsp&nbsp&nbsp&nbspGalaxy S6及以上系列</li>
+                        <li class="lead">小米&nbsp&nbsp&nbsp&nbsp3及以上系列</li>
+                        <li class="lead">华为&nbsp&nbsp&nbsp&nbsp荣耀6plus及以上系列</li>
+                    </ul>
+                    <div>
+                        <p style="color:#e14d57">注:目前移动设备对WebGL的支持存在差异，使用微信内置浏览器可能影响稳定，推荐使用Chrome浏览器获得最佳浏览效果。</p>
+                    </div>
+
+                </div>
+
+                <!--模块说明-->
+                <div class="section icl-docs-section">
+                    <h2 id="modules" class="section-title">模块说明</h2>
+                    <p class="lead"></p>
+                    <div class="highlight">
+                        <div id="moduleIntro"></div>
+                    </div>
+                </div>
+                <!--模块说明End-->
+                <!--新特性-->
+                <!-- <div class="section icl-docs-section"> -->
+                    <!-- <div class="new-attributes"> -->
+                        <!-- <h2 id="newAttributes" class="section-title">新特性</h2> -->
+                        <!-- <div style="font-weight: bold;font-size:18px;color:#e14d57">10.1.0-beta -->
+                            <!-- <span style="vertical-align: super;font-size:10px"></span></div> -->
+                        <!-- <div class="panel-body"> -->
+                            <!-- <div class="news-list"> -->
+                                <!-- <div class="news-item-img"> -->
+                                    <!-- <div class="news-box-img"> -->
+                                        <!-- <div class='news-img' -->
+                                            <!-- style='background: no-repeat center / cover url("../img/whatsNew1010_alpha_3.png")'> -->
+                                            <!-- <a href="../../examples/leaflet/editor.html#plot_movingTarget" -->
+                                                <!-- target="_blank"></a></div> -->
+                                        <!-- <div class='news-info-container'> -->
+                                            <!-- <div class='news-info-title'> -->
+                                                <!-- <div class='news-title-href'><a -->
+                                                        <!-- href="../../examples/leaflet/editor.html#plot_movingTarget" -->
+                                                        <!-- style='color: inherit; font-size: inherit; font-weight: inherit;' -->
+                                                        <!-- target="_blank">iClient for Leaflet动态标绘：新增支持动态目标图层</a></div> -->
+                                            <!-- </div> -->
+                                            <!-- <p class="new-attributes_content"> -->
+                                                <!-- 支持显示动态目标及其轨迹，点标号新增支持设置生命值功能，点标号新增支持设置自定义图片功能 -->
+                                            <!-- </p> -->
+                                        <!-- </div> -->
+                                    <!-- </div> -->
+                                <!-- </div> -->
+                                <!-- <div class="news-item-img"> -->
+                                    <!-- <div class="news-box-img"> -->
+                                        <!-- <div class='news-img' -->
+                                            <!-- style='background: no-repeat center / cover url("../img/whatsNew1010_alpha_4.png")'> -->
+                                            <!-- <a href="../../examples/leaflet/editor.html#l_pixiOverlay_taxi" -->
+                                                <!-- target="_blank"></a></div> -->
+                                        <!-- <div class='news-info-container'> -->
+                                            <!-- <div class='news-info-title'> -->
+                                                <!-- <div class='news-title-href'><a -->
+                                                        <!-- href="../../examples/leaflet/editor.html#l_pixiOverlay_taxi" -->
+                                                        <!-- style='color: inherit; font-size: inherit; font-weight: inherit;' -->
+                                                        <!-- target="_blank">iClient for Leaflet可视化：新增PixiJS图层</a></div> -->
+                                            <!-- </div> -->
+                                            <!-- <p class="new-attributes_content"> -->
+                                                <!-- PixiJS 是一个超快的2D渲染引擎，PixiJS和Leaflet的结合提升了Leaflet在海量图标绘制方面的性能 -->
+                                            <!-- </p> -->
+                                        <!-- </div> -->
+                                    <!-- </div> -->
+                                <!-- </div> -->
+                                <!-- <div class="news-item-img"> -->
+                                    <!-- <div class="news-box-img"> -->
+                                        <!-- <div class='news-img' -->
+                                            <!-- style='background: no-repeat center / contain url("../img/whatsNew1010_alpha_5.png")'> -->
+                                            <!-- <a href="https://iclient.supermap.io/docs/openlayers/ol.source.TileSuperMapRest.html" -->
+                                                <!-- target="_blank"></a></div> -->
+                                        <!-- <div class='news-info-container'> -->
+                                            <!-- <div class='news-info-title'> -->
+                                                <!-- <div class='news-title-href'><a -->
+                                                        <!-- href="https://iclient.supermap.io/docs/openlayers/ol.source.TileSuperMapRest.html" -->
+                                                        <!-- style='color: inherit; font-size: inherit; font-weight: inherit;' -->
+                                                        <!-- target="_blank">全面支持webp地图瓦片格式</a></div> -->
+                                            <!-- </div> -->
+                                            <!-- <p class="new-attributes_content"> -->
+                                                <!-- SuperMap iServer出图格式新增webp参数，WebP格式具有更优的图像数据压缩算法，能带来更小的地图瓦片体积，而且拥有肉眼识别无差异的图像质量 -->
+                                            <!-- </p> -->
+                                        <!-- </div> -->
+                                    <!-- </div> -->
+                                <!-- </div> -->
+                            <!-- </div> -->
+                        <!-- </div> -->
+                    <!-- </div> -->
+                <!-- </div> -->
+				<!--新特性 end-->
+                    
+                <div class="section icl-docs-section">
+                    <h2 id="license" class="section-title">许可说明</h2>
+                    <a href="https://github.com/SuperMap/iClient-JavaScript/blob/master/LICENSE" target="_blank">
+                        <p class="lead">Apache License 2.0</p>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--内容区 end-->
+
+    <!--footer-->
+    <footer class="main-footer icl-footer"></footer>
+    <script>
+        utils.loadTemplate(".icl-footer", "../template/footer.html", navigation);
+
+    </script>
+    <!--footer end-->
+
+    <script type="text/javascript" src="../js/common.js"></script>
+    <script>
+        var data = NodesConversionTool.depsToNodes("Documentation");
+
+        var Util = G6.Util;
+        // 准备布局配置
+        var layoutCfg = {
+            "direction": "LR",
+            "nodeSep": 20,
+            "nodeSize": 20,
+            "rankSep": 200
+        };
+        // 自定义树节点
+        var DEFAULT_NODE_SIZE = 5;
+        G6.registNode('treeNode', {
+            draw(cfg, group) {
+                var origin = cfg.origin;
+                var r = layoutCfg.nodeSize ? layoutCfg.nodeSize / 2 : DEFAULT_NODE_SIZE;
+                var shapeCfg = {
+                    attrs: {
+                        x: cfg.x,
+                        y: cfg.y,
+                        r: r,
+                        stroke: '#003380',
+                        fill: 'white',
+                        fillOpacity: 1,
+                    },
+                };
+                if (origin.children && origin.children.length) {
+                    shapeCfg.class = origin.isCollapsed ? 'spreadoutButton' : 'collapseButton';
+                    shapeCfg.attrs.fill = '#044A9A';
+                    shapeCfg.attrs.stroke = '#003380';
+                    shapeCfg.attrs.fillOpacity = 0.4;
+                }
+                if (origin.root) {
+                    shapeCfg.attrs.fill = '#044A9A';
+                    shapeCfg.attrs.stroke = '#003380';
+                    shapeCfg.attrs.fillOpacity = 0.7;
+                }
+                shapeCfg.attrStash = Util.mix({}, shapeCfg.attrs);
+                return group.addShape('circle', shapeCfg);
+            },
+            afterDraw(cfg, group) {
+                var origin = cfg.origin;
+                var r = layoutCfg.nodeSize ? layoutCfg.nodeSize / 2 : DEFAULT_NODE_SIZE;
+                var align = origin.align;
+                var labelAttrs = {
+                    text: origin.name,
+                    fill: '#666',
+                    textBaseline: 'middle',
+                    fontSize: 35,
+                    x: cfg.x + r + DEFAULT_NODE_SIZE,
+                    y: cfg.y,
+                    textAlign: 'left',
+                };
+                if (align === 'R') {
+                    Util.mix(labelAttrs, {
+                        x: cfg.x - r - DEFAULT_NODE_SIZE,
+                        y: cfg.y,
+                        textAlign: 'right',
+                    });
+                } else if (align === 'T' || align === 'CH') {
+                    Util.mix(labelAttrs, {
+                        x: cfg.x,
+                        y: cfg.y + r + DEFAULT_NODE_SIZE,
+                        textAlign: 'right',
+                        rotate: -Math.PI / 2,
+                    });
+                } else if (align === 'B') {
+                    Util.mix(labelAttrs, {
+                        x: cfg.x,
+                        y: cfg.y - r - DEFAULT_NODE_SIZE,
+                        textAlign: 'left',
+                        rotate: -Math.PI / 2,
+                    });
+                }
+                var label = group.addShape('text', {
+                    attrs: labelAttrs,
+                });
+                return label;
+            }
+        });
+        // 生成树图实例
+        var tree = new G6.Tree({
+            id: 'moduleIntro', // 容器ID
+            height: 660, // 画布高
+            fitView: 'autoZoom', // 自动缩放
+            layoutFn: G6.Layout.LayeredTidyTree, // 布局类型
+            layoutCfg: layoutCfg, // 布局配置
+            showButton: false
+        });
+        // 加载数据
+        tree.source(data);
+        tree.node().shape('treeNode');
+        tree.edge()
+            .shape('smooth')
+            .style({
+                stroke: '#A9BCD3'
+            });
+        tree.tooltip(true);
+        tree.tooltip({
+            split: ''
+        });
+        tree.node().tooltip(function (obj) {
+            return [
+                [obj.des]
+            ]
+        });
+        // 渲染树图
+        tree.render();
+        // 添加事件
+        tree.on('itemclick', function (ev) {
+            if (ev.shape.__cfg.type !== 'circle' && ev.shape.__cfg.type !== 'path' && !ev.item.get('model')
+                .children && ev.item.get('model').name) {
+                window.open("../../docs/Documentation/" + ev.item.get('model').name + ".html");
+            }
+        });
+        tree.on('mouseenter', function (ev) {
+            if (ev.itemType === 'edge') {
+                return;
+            }
+            var shape = ev.shape;
+            if (shape.__cfg.type !== 'circle') {
+                shape._setAttr("fill", "#e14d57");
+                tree.refresh();
+            }
+        });
+        tree.on('mousemove', function (ev) {
+            $('#canvas_2').css('cursor', 'pointer');
+        });
+        tree.on('mouseleave', function (ev) {
+            if (ev.itemType === 'edge') {
+                return;
+            }
+            var shape = ev.shape;
+            if (shape.__cfg.type !== 'circle') {
+                shape._setAttr("fill", "#666");
+                tree.refresh();
+            }
+        });
+
+    </script>
+</body>
+
+</html>

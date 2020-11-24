@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>量算</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <script src="./js/bootstrap-select.min.js"></script>
+    <script src="./js/config.js"></script>
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+</head>
+
+<body>
+    <div id="cesiumContainer"></div>
+    <div id='loadingbar' class="spinner">
+        <div class="spinner-container container1">
+            <div class="circle1"></div>
+            <div class="circle2"></div>
+            <div class="circle3"></div>
+            <div class="circle4"></div>
+        </div>
+        <div class="spinner-container container2">
+            <div class="circle1"></div>
+            <div class="circle2"></div>
+            <div class="circle3"></div>
+            <div class="circle4"></div>
+        </div>
+        <div class="spinner-container container3">
+            <div class="circle1"></div>
+            <div class="circle2"></div>
+            <div class="circle3"></div>
+            <div class="circle4"></div>
+        </div>
+    </div>
+    <div id="toolbar" class="param-container tool-bar">
+        <button type="button" id="distance" class="button black">测距</button>
+        <button type="button" id="area" class="button black">测面</button>
+        <button type="button" id="height" class="button black">测高</button>
+        <button type="button" id="clear" class="button black">清除</button>
+        <div style="width: 120px;">
+            <select id="selOpt" class="selectpicker show-tick form-control">
+                <option selected value="1">空间量算</option>
+                <option value="2">贴地量算</option>
+                <option value="3">CGCS2000(国情)</option>
+                <option value="4">Xi-An1980(国情)</option>
+                <option value="5">平面投影(三调)</option>
+            </select>
+        </div>
+    </div>
+    <script type="text/javascript">
+        function onload(Cesium) {
+            var viewer = new Cesium.Viewer('cesiumContainer', {
+                //创建地形服务提供者的实例，url为SuperMap iServer发布的TIN地形服务
+                terrainProvider: new Cesium.CesiumTerrainProvider({
+                    url: URL_CONFIG.ZF_TERRAIN,
+                    isSct: true//地形服务源自SuperMap iServer发布时需设置isSct为true
+                })
+            });
+            //添加SuperMap iServer发布的影像服务
+            viewer.imageryLayers.addImageryProvider(new Cesium.SuperMapImageryProvider({
+                url: URL_CONFIG.ZF_IMG
+            }));
+            var clampMode = 0; // 空间模式
+            var scene = viewer.scene;
+            var widget = viewer.cesiumWidget;
+            var handlerDis, handlerArea, handlerHeight;
+            //设置相机位置、视角
+            viewer.scene.camera.setView({
+                destination: new Cesium.Cartesian3(-1206939.1925299785, 5337998.241228442, 3286279.2424502545),
+                orientation: {
+                    heading: 1.4059101895600987,
+                    pitch: -0.20917672793046682,
+                    roll: 2.708944180085382e-13
+                }
+            });
+
+            //初始化测量距离
+            handlerDis = new Cesium.MeasureHandler(viewer, Cesium.MeasureMode.Distance, clampMode);
+            //注册测距功能事件
+            handlerDis.measureEvt.addEventListener(function (result) {
+                var dis = Number(result.distance);
+                var selOptV = $("#selOpt").val();
+                var positions = result.positions;
+                if (selOptV == 3 || selOptV == 4) {
+                    dis = Number(calcClampDistance(positions));
+                }
+                var distance = dis > 1000 ? (dis / 1000).toFixed(2) + 'km' : dis.toFixed(2) + 'm';
+                handlerDis.disLabel.text = '距离:' + distance;
+
+            });
+            handlerDis.activeEvt.addEventListener(function (isActive) {
+                if (isActive == true) {
+                    viewer.enableCursorStyle = false;
+                    viewer._element.style.cursor = '';
+                    $('body').removeClass('measureCur').addClass('measureCur');
+                }
+                else {
+                    viewer.enableCursorStyle = true;
+                    $('body').removeClass('measureCur');
+                }
+            });
+
+            //初始化测量面积
+            handlerArea = new Cesium.MeasureHandler(viewer, Cesium.MeasureMode.Area, clampMode);
+            handlerArea.measureEvt.addEventListener(function (result) {
+                var mj = Number(result.area);
+                var selOptV = $("#selOpt").val();
+                var positions = result.positions;
+                if (selOptV == 3 || selOptV == 4) {
+                    mj = Number(calcClampValue(positions));
+                } else if (selOptV == 5) {
+                    mj = Number(calcAreaWithoutHeight(positions));
+                }
+
+                var area = mj > 1000000 ? (mj / 1000000).toFixed(2) + 'km²' : mj.toFixed(2) + '㎡'
+                handlerArea.areaLabel.text = '面积:' + area;
+            });
+            handlerArea.activeEvt.addEventListener(function (isActive) {
+                if (isActive == true) {
+                    viewer.enableCursorStyle = false;
+                    viewer._element.style.cursor = '';
+                    $('body').removeClass('measureCur').addClass('measureCur');
+                }
+                else {
+                    viewer.enableCursorStyle = true;
+                    $('body').removeClass('measureCur');
+                }
+            });
+
+            //初始化测量高度
+            handlerHeight = new Cesium.MeasureHandler(viewer, Cesium.MeasureMode.DVH);
+            handlerHeight.measureEvt.addEventListener(function (result) {
+                var distance = result.distance > 1000 ? (result.distance / 1000).toFixed(2) + 'km' : result.distance + 'm';
+                var vHeight = result.verticalHeight > 1000 ? (result.verticalHeight / 1000).toFixed(2) + 'km' : result.verticalHeight + 'm';
+                var hDistance = result.horizontalDistance > 1000 ? (result.horizontalDistance / 1000).toFixed(2) + 'km' : result.horizontalDistance + 'm';
+                handlerHeight.disLabel.text = '空间距离:' + distance;
+                handlerHeight.vLabel.text = '垂直高度:' + vHeight;
+                handlerHeight.hLabel.text = '水平距离:' + hDistance;
+            });
+            handlerHeight.activeEvt.addEventListener(function (isActive) {
+                if (isActive == true) {
+                    viewer.enableCursorStyle = false;
+                    viewer._element.style.cursor = '';
+                    $('body').removeClass('measureCur').addClass('measureCur');
+                }
+                else {
+                    viewer.enableCursorStyle = true;
+                    $('body').removeClass('measureCur');
+                }
+            });
+
+            //椭球贴地面积
+            function calcClampValue(positions) {
+                var lonlat = [];
+                var value = 0;
+                for (var i = 0; i < positions.length; i++) {
+                    var cartographic = Cesium.Cartographic.fromCartesian(positions[i]);
+                    var lon = Cesium.Math.toDegrees(cartographic.longitude);
+
+                    var lat = Cesium.Math.toDegrees(cartographic.latitude);
+                    lonlat.push(lon, lat);
+                }
+
+                var gemetry = new Cesium.PolygonGeometry.fromPositions({
+                    positions: Cesium.Cartesian3.fromDegreesArray(lonlat)
+                });
+
+                var selOptV = $("#selOpt").val();
+                if (selOptV == 3) {
+                    value = scene.globe.computeSurfaceArea(gemetry, Cesium.Ellipsoid.CGCS2000);
+
+                } else if (selOptV == 4) {
+                    value = scene.globe.computeSurfaceArea(gemetry, Cesium.Ellipsoid.XIAN80);
+                }
+                return value;
+            }
+            //椭球贴地距离
+            function calcClampDistance(positions) {
+                var lonlat = [];
+                var value = 0;
+                for (var i = 0; i < positions.length; i++) {
+                    var cartographic = Cesium.Cartographic.fromCartesian(positions[i]);
+                    var lon = Cesium.Math.toDegrees(cartographic.longitude);
+
+                    var lat = Cesium.Math.toDegrees(cartographic.latitude);
+                    lonlat.push(lon, lat);
+                }
+
+                var gemetry = new Cesium.PolylineGeometry({
+                    positions: Cesium.Cartesian3.fromDegreesArray(lonlat)
+                });
+
+
+                var selOptV = $("#selOpt").val();
+                if (selOptV == 3) {
+                    value = scene.globe.computeSurfaceDistance(gemetry, Cesium.Ellipsoid.CGCS2000);
+
+                } else if (selOptV == 4) {
+                    value = scene.globe.computeSurfaceDistance(gemetry, Cesium.Ellipsoid.XIAN80);
+                }
+                return value;
+            }
+
+            function calcAreaWithoutHeight(positions) {
+                var totalLon = 0;
+                for (var i = 0; i < positions.length; i++) {
+                    var cartographic = Cesium.Cartographic.fromCartesian(positions[i]);
+                    var lon = Cesium.Math.toDegrees(cartographic.longitude);
+                    totalLon += lon;
+                }
+
+
+
+                var dh = Math.round((totalLon / positions.length + 6) / 6);//带号
+                var centralMeridian = dh * 6 - 3;
+                //高斯投影
+                var projection = new Cesium.CustomProjection({
+                    name: "tmerc",
+                    centralMeridian: centralMeridian,
+                    primeMeridian: 0,
+                    standardParallel_1: 0,
+                    standardParallel_2: 0,
+                    eastFalse: 500000.0,
+                    northFalse: 0.0,
+                    semimajorAxis: 6378137,
+                    inverseFlattening: 298.257222101
+
+                });
+                var cartesians = [];
+                for (var i = 0; i < positions.length; i++) {
+                    var cartographic = Cesium.Cartographic.fromCartesian(positions[i]);
+
+                    var cartesian = projection.project(cartographic);
+                    cartesians.push(cartesian);
+                }
+
+                cartesians.push(cartesians[0]);//首尾相接
+                var value = Cesium.getPreciseArea(cartesians, "China2000", centralMeridian, dh, 1);
+                return value;
+            }
+
+            $('#distance').click(function () {
+                deactiveAll();
+                handlerDis && handlerDis.activate();
+            });
+
+            $('#area').click(function () {
+                deactiveAll();
+                handlerArea && handlerArea.activate();
+            });
+            $('#height').click(function () {
+                deactiveAll();
+                handlerHeight && handlerHeight.activate();
+            });
+            $('#clear').click(function () {
+                clearAll();
+            });
+
+            $('#selOpt').change(function () {
+                var value = $(this).val();
+				$('#distance').show();
+			    $('#height').show();
+                if (value == '1') {
+                    clampMode = 0;
+                    handlerArea.clampMode = 0;
+                    handlerDis.clampMode = 0;
+                }
+                else {
+                    clampMode = 1;
+                    handlerArea.clampMode = 1;
+                    handlerDis.clampMode = 1;
+					if(value == '5')
+					{
+						$('#distance').hide();
+						$('#height').hide();
+				
+					}else if(value == '3' || value == '4'){
+						$('#height').hide();
+					}
+                }
+            });
+
+
+            if (!scene.pickPositionSupported) {
+                alert('不支持深度拾取,量算功能无法使用(无法进行鼠标交互绘制)！');
+            }
+
+            function clearAll() {
+                handlerDis && handlerDis.clear();
+                handlerArea && handlerArea.clear();
+                handlerHeight && handlerHeight.clear();
+            }
+
+            function deactiveAll() {
+                handlerDis && handlerDis.deactivate();
+                handlerArea && handlerArea.deactivate();
+                handlerHeight && handlerHeight.deactivate();
+            }
+
+            $('#loadingbar').remove();
+        }
+        if (typeof Cesium !== 'undefined') {
+            window.startupCalled = true;
+            onload(Cesium);
+        }
+    </script>
+</body>
+
+</html>

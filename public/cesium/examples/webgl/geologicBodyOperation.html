@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>地质体拉伸与剖切</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <link href="./css/bootstrap-new.min.css" rel="stylesheet">
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <script src="./js/tooltip.js"></script>
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+    <style>
+        .spinner-boot {
+            width: 69px;
+            float: right;
+        }
+
+        .spinner-boot input {
+            text-align: right;
+            background-color: #444;
+            color: white;
+            opacity: 0.6;
+            padding-right: 50%;
+            border-radius: 4px !important;
+        }
+
+        .input-group-btn-vertical {
+            position: absolute;
+            right: 8px;
+            white-space: nowrap;
+            width: 10px;
+            margin-top: 2px;
+            margin-right: 2px;
+            top: 4px;
+            vertical-align: middle;
+            display: table-cell;
+            z-index: 999;
+        }
+
+        .input-group-btn-vertical > .btn {
+            display: block;
+            float: none;
+            position: relative;
+            border-radius: 0;
+            border: none !important;
+            padding: 0;
+            width: 16px;
+            height: 12px;
+            background-color: #444;
+        }
+
+        .input-group-btn-vertical > .btn:first-child {
+            border-top-right-radius: 4px;
+            color: white;
+            opacity: 0.6;
+            font-size: 8px;
+        }
+
+        .input-group-btn-vertical > .btn:last-child {
+            margin-top: -2px;
+            color: white;
+            opacity: 0.6;
+            font-size: 8px;
+            border-bottom-right-radius: 4px;
+        }
+
+        .dzt-title {
+            width: 98px;
+            font-size: 14px;
+            font-family: Microsoft YaHei;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 1);
+            opacity: 0.8;
+        }
+
+        #toolbar {
+            margin: 43px 0 0 43px;
+            width: 260px;
+            background: rgba(42, 42, 42, 1);
+            opacity: 0.9;
+            border-radius: 4px;
+            padding-top: 12px;
+        }
+
+        .dzt-operate {
+            margin: 14px 0 11px 0px;
+        }
+
+        .dzt-tip {
+            line-height: 32px;
+        }
+
+        .divide {
+            height: 1px;
+            margin-top: 4px;
+            /* border-bottom: 5x solid white; */
+            background-color: #3C3C3C;
+        }
+
+        .btn {
+            background: #444;
+        }
+
+        #toolbar {
+            cursor: auto;
+        }
+    </style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+<div id="toolbar" class="param-container tool-bar">
+    <div class="dzt-title">地质体垂直拉伸</div>
+    <div class="divide"></div>
+    <div class="dzt-operate">
+        <span class="dzt-tip">Z轴方向拉伸高度</span>
+        <div class="input-group spinner-boot">
+            <input type="text" class="form-control" value="1" id="zScale">
+            <div class="input-group-btn-vertical">
+                <button class="btn btn-default" type="button"><i class="glyphicon glyphicon-triangle-top"></i></button>
+                <button class="btn btn-default" type="button"><i class="glyphicon glyphicon-triangle-bottom"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="dzt-title" style="margin-top:20px;">地质体剖切</div>
+    <div class="divide"></div>
+    <div class="dzt-operate">
+        <button id="drawline" class="button black" type="button">画线</button>
+        <button id="build" class="button black" type="button">剖切</button>
+        <button id="clear" class="button black" type="button">清除</button>
+    </div>
+</div>
+<script>
+    $('.spinner-boot .btn:first-of-type').on('click', function () {
+        let val = parseInt($('.spinner-boot input').val()) + 1;
+        $('.spinner-boot input').val(val).trigger('input');
+    });
+    $('.spinner-boot .btn:last-of-type').on('click', function () {
+        let val = parseInt($('.spinner-boot input').val()) - 1;
+        if (val < 1) {
+            val = 1;
+        }
+        $('.spinner-boot input').val(val).trigger('input');
+    });
+
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer', {
+            infoBox: false,
+            // timeline: true
+        });
+        var scene = viewer.scene;
+        scene.logarithmicDepthBuffer = true;
+        scene.camera.frustum.near = 0.1;
+        scene.globe.show = false;
+
+        var tooltip = createTooltip(document.body);
+
+        var solidModelsProfile = new Cesium.SolidModelsProfile(scene);
+
+        scene.camera.setView({
+            destination: new Cesium.Cartesian3(-2167835.4408299956, 4423497.534529096, 4095839.2845661934),
+            orientation: {
+                heading: 4.029329438295484,
+                pitch: -0.23796647219353817,
+                roll: 8.994289757424667e-10
+            }
+        });
+
+        var modelUrls = [
+            "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer1/features/1.json",
+            "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer2/features/1.json",
+            "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer3/features/1.json",
+            "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer4/features/1.json",
+            "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer5/features/1.json",
+            "http://www.supermapol.com/realspace/services/data-dizhiti/rest/data/datasources/%E5%9C%B0%E8%B4%A8%E4%BD%93/datasets/Layer6/features/1.json",
+        ];
+
+        function showModel() {
+            var models = [];
+            // 也可以不设置纹理，设置颜色
+            models.push({
+                model: modelUrls[0],
+                color: new Cesium.Color(179 / 255, 179 / 255, 179 / 255, 1)
+            });
+            models.push({
+                model: modelUrls[1],
+                color: new Cesium.Color(94 / 255, 179 / 255, 59 / 255, 1)
+            });
+            models.push({
+                model: modelUrls[2],
+                color: new Cesium.Color(52 / 255, 94 / 255, 35 / 255, 1)
+            });
+            models.push({
+                model: modelUrls[3],
+                color: new Cesium.Color(115 / 255, 115 / 255, 115 / 255, 1)
+            });
+            models.push({
+                model: modelUrls[4],
+                color: new Cesium.Color(171 / 255, 85 / 255, 66 / 255, 1)
+            });
+            models.push({
+                model: modelUrls[5],
+                color: new Cesium.Color(68 / 255, 68 / 255, 68 / 255, 1)
+            });
+
+            solidModelsProfile.addModels(models);
+        }
+
+        showModel();
+
+        $('#zScale').on('input propertyChange', function () {
+            var z = +$('#zScale').val();
+            for (let url of modelUrls) {
+                let instance = solidModelsProfile._s3mInstanceCollection._group[url].instances._array[0];
+                instance.updateScale(new Cesium.Cartesian3(1, 1, z));
+            }
+        })
+
+        //点击开始画线
+        $('#drawline').click(function () {
+            handlerLine.clear();
+            handlerLine.activate();
+        });
+
+        //点击开始剖切
+        $('#build').click(function () {
+            tooltip.setVisible(false);
+            handlerLine.deactivate();
+            solidModelsProfile.build();
+        });
+
+        //画线，用于剖切地质体
+        var handlerLine = new Cesium.DrawHandler(viewer, Cesium.DrawMode.Line);
+        handlerLine.activeEvt.addEventListener(function (isActive) {
+            if (isActive == true) {
+                viewer.enableCursorStyle = false;
+                viewer._element.style.cursor = '';
+                $('body').removeClass('drawCur').addClass('drawCur');
+            } else {
+                viewer.enableCursorStyle = true;
+                $('body').removeClass('drawCur');
+            }
+        });
+
+        handlerLine.movingEvt.addEventListener(function (windowPosition) {
+            if (handlerLine.isDrawing) {
+                tooltip.showAt(windowPosition, '<p>右键结束当前线段，可绘制多条线段</p>');
+            } else {
+                tooltip.showAt(windowPosition, '<p>点击绘制第一个点</p>');
+            }
+        });
+
+        handlerLine.drawEvt.addEventListener(function (result) {
+            tooltip.setVisible(false);
+
+            for (var i = 0; i < result.object.positions.length - 1; i++) {
+                var point1 = result.object.positions[i];
+                var point2 = result.object.positions[i + 1];
+
+                var pointArray = [];
+                pointArray.push(point1);
+                pointArray.push(point2);
+
+                solidModelsProfile.addProfileGeometry(pointArray);
+            }
+            handlerLine.activate();
+
+            viewer.entities.add({
+                polyline: {
+                    positions: result.object.positions,
+                    width: 2,
+                    material: Cesium.Color.fromCssColorString('#51ff00')
+                }
+            });
+
+        });
+
+        //清除剖切结果
+        $('#clear').click(function () {
+            tooltip.setVisible(false);
+            solidModelsProfile.clearProfile();
+            handlerLine.deactivate();
+            handlerLine.clear();
+            viewer.entities.removeAll(); 
+        });
+
+        $('#loadingbar').remove();
+    }
+
+    if (typeof Cesium !== 'undefined') {
+        window.startupCalled = true;
+        onload(Cesium);
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>GPU空间查询</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/font-awesome.min.css" rel="stylesheet">
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <link href="./css/style.css" rel="stylesheet">
+    <script type="text/javascript" src="./js/jquery.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <script src="./js/bootstrap-select.min.js"></script>
+    <script src="./js/slider.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/tooltip.js"></script>
+    <script src="./js/spectrum.js"></script>
+    <script type="text/javascript" src="./js/require.min.js" data-main="js/main"></script>
+    <style>
+
+        .drawCur {
+            cursor: url(./images/cur/measure.cur), auto;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 73px;
+            height: 2px;
+            border-radius: 10px; /*这个属性设置使填充进度条时的图形为圆角*/
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            margin-top: -3px;
+            height: 10px;
+            width: 10px;
+        }
+
+        .inputBox {
+            margin-bottom: 15px;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 2px;
+        }
+
+        input[type=text] {
+            width: 62px;
+            height: 28px;
+            background: rgba(51, 51, 51, 1);
+            border: 1px solid rgba(74, 74, 74, 1);
+            border-radius: 4px;
+            margin: 0;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+<div id="cesiumContainer"></div>
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+<button id="bn"
+        style="position : absolute; left : 1%; top : 2%; display : none;background-color: #00a1cb;color:#fff;border: 0">
+    查询
+</button>
+<div id="toolbar" style="position : absolute; left : 1%; top : 2%; display : none;">
+    <div class="titleBox">
+        <div class="titl">属性编辑</div>
+        <span class="close2" aria-hidden="false">×</span>-->
+    </div>
+    <div class="inputBox">
+        <label class="lab">绕x轴旋转(度)</label>
+        <div class="rangeBox">
+            <input type="range" id="pitch" min="0" max="120" step="1" value="0" title="pitch"
+                   data-bind="value: pitch, valueUpdate: 'input'">
+        </div>
+        <input type="text" size="5" data-bind="value: pitch" style="color: #ffffff">
+    </div>
+    <div class="inputBox">
+        <label class="lab">绕Y轴旋转(度)</label>
+        <div class="rangeBox">
+            <input type="range" id="roll" min="0" max="90" step="1.0" value="0" title="roll"
+                   data-bind="value: roll, valueUpdate: 'input'">
+        </div>
+        <input type="text" size="5" data-bind="value: roll" style="color: #ffffff">
+    </div>
+    <div class="inputBox">
+        <label class="lab">绕Z轴旋转(度)</label>
+        <div class="rangeBox">
+            <input type="range" id="heading" min="0" max="90" step="1.0" value="0" title="heading"
+                   data-bind="value: heading, valueUpdate: 'input'">
+        </div>
+        <input type="text" size="5" data-bind="value: heading" style="color: #ffffff">
+    </div>
+    <div class="inputBox">
+        <label class="lab">缩放绘制对象</label>
+        <div class="rangeBox">
+            <input type="range" id="scale" min="0" max="10" step="0.2" value="1" title="距离"
+                   data-bind="value: scale, valueUpdate: 'input'">
+        </div>
+        <input type="text" size="5" data-bind="value: scale" style="color: #ffffff">
+    </div>
+    <div class="inputBox fisrt">
+        <label class="lab " for="positionMode">位置模式：</label>
+        <select id="positionMode" class="selectstyle">
+            <option value="intersects">相交</option>
+            <option value="disjoint">相离</option>
+            <option value="contains">包含</option>
+        </select>
+    </div>
+    <div class="inputBox">
+        <label class="lab" for="geometryType">模型类型：</label>
+        <select id="geometryType" class="selectstyle">
+            <option value="box">立方体</option>
+            <option value="sphere">球体</option>
+            <option value="cone">锥体</option>
+            <option value="cylinder">柱体</option>
+            <option value="ellicpse">椭球</option>
+        </select>
+    </div>
+    <p class="attaintion" style="margin-bottom: 30px;">注：本例中观察者附加高度：1.8 米</p>
+    <div class="inputBox foot">
+        <button type="button" id="clear" class=" btn2" style="  width:56px; right: 108px;">清除</button>
+        <button type="button" id="AllIDs" class=" btn2 "
+                style="background:rgba(60,141,188,1);margin-right: 0;border: 0 ">获取查询结果
+        </button>
+    </div>
+</div>
+<script type="text/javascript">
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer');
+        var scene = viewer.scene;
+        scene.shadowMap.darkness = 1.275; //设置第二重烘焙纹理的效果（明暗程度）
+        scene.skyAtmosphere.brightnessShift = 0.4;  //修改大气的亮度
+        scene.debugShowFramesPerSecond = true;
+        scene.hdrEnabled = false;
+        scene.sun.show = false;
+        // 01设置环境光的强度-新处理CBD场景
+        scene.lightSource.ambientLightColor = new Cesium.Color(0.65, 0.65, 0.65, 1);
+        // 添加光源
+        var position1 = new Cesium.Cartesian3.fromDegrees(116.261209157595, 39.3042238956531, 480);
+        //光源方向点
+
+        var targetPosition1 = new Cesium.Cartesian3.fromDegrees(116.261209157595, 39.3042238956531, 430);
+        var dirLightOptions = {
+            targetPosition: targetPosition1,
+            color: new Cesium.Color(1.0, 1.0, 1.0, 1),
+            intensity: 0.55
+        };
+        directionalLight_1 = new Cesium.DirectionalLight(position1, dirLightOptions);
+        scene.addLightSource(directionalLight_1);
+        if (!scene.pickPositionSupported) {
+            alert('不支持深度纹理,可视域分析功能无法使用（无法添加观测）！');
+        }
+        // 先将此标记置为true，不激活鼠标移动事件中对可视域分析对象的操作
+        scene.viewFlag = true;
+        //鼠标样式
+        viewer.enableCursorStyle = false;
+        viewer._element.style.cursor = '';
+        $('body').removeClass('drawCur').addClass('drawCur');
+        var tooltip = createTooltip(viewer._element);
+        var widget = viewer.cesiumWidget;
+        try {
+            $("#wrapper").show();
+            // var promise = scene.open(URL_CONFIG.SCENE_WIREFRAME );
+            var promise = scene.open(URL_CONFIG.SCENE_CBD);
+            Cesium.when(promise, function (layers) {
+                for (var i = 0; i < layers.length; i++) {
+                    layers[i].selectEnabled = false;
+                }
+                //设置相机位置、视角，便于观察场景
+                scene.camera.setView({
+                    destination: new Cesium.Cartesian3.fromDegrees(116.4566, 39.9149, 5323.445971240632),
+                    orientation: {
+                        heading: 3.1612,
+                        pitch: -1.5188,
+                        roll: 6.283185307179563
+                    }
+                });
+                var layerSelect = [];
+                var layer = scene.layers.find("Building@CBD");
+                layerSelect.push(layer);
+                var camera = scene.camera;
+                camera.flyCircleLoop = true; // 相机绕点旋转开启循环模式
+                var geometry = undefined;
+                var pos = undefined;
+                var index = 0;    //保存模型类型变量
+                var mode = Cesium.PositionMode.Intersects
+                var spatialQuery = new Cesium.SpatialQuery3D(scene);
+                var handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+
+                // 鼠标提示用户操作，只显示一次
+                handler.setInputAction(function (movement) {
+                    mousePosition = movement.endPosition;
+                    tooltip.showAt(mousePosition, '<p>点击场景后，绘制分析对象</p>');
+                }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+                handler.setInputAction(function (evt) {
+                    // 获取鼠标点击的笛卡尔坐标
+                    var cartesian = scene.pickPosition(evt.position);
+                    var cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+                    pos = new Cesium.Point3D(Cesium.Math.toDegrees(cartographic.longitude), Cesium.Math.toDegrees(cartographic.latitude), cartographic.height);
+                    // 调用当前选择模型类型的函数
+                    changeMode(index);
+                    spatialQuery.geometry = geometry;
+                    spatialQuery.positionMode = mode;
+                    spatialQuery.layers = layerSelect;
+                    spatialQuery.outlineColor = Cesium.Color.CORNFLOWERBLUE;
+                    spatialQuery.fillStyle = Cesium.FillStyle.Fill_And_WireFrame
+                    spatialQuery.build();
+                    tooltip.setVisible(false);
+                    handler.removeInputAction(Cesium.ScreenSpaceEventType.MOUSE_MOVE)  //移除鼠标移动事件监听
+                }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+                $('#AllIDs').click(function () {
+                    if (spatialQuery.geometry) {
+                        var idsObj = spatialQuery.getQueryIDs();
+                        console.log(idsObj);
+
+                        // layer.selectedColor = Cesium.Color.DEEPSKYBLUE;
+                        // for (var i = 0; i < idsObj.length; i++) {
+                        //     var ids = idsObj[i].ids;
+                        //     layer.setSelection(ids);
+                        // }
+                    }
+                });
+                $('#clear').click(function () {
+                    layer.selectedColor = new Cesium.Color(0.7, 0.7, 1, 1)
+                    layer.setSelection([])
+                    spatialQuery.geometry = undefined
+                    // spatialQuery.clear() 
+                });
+
+                $("#positionMode").on("input change", function () {
+                    var index = document.getElementById("positionMode").selectedIndex;
+                    switch (index) {
+                        case 0:
+                            mode = Cesium.PositionMode.Intersects;
+                            break;
+                        case 1:
+                            mode = Cesium.PositionMode.Disjoint;
+                            break;
+                        case 2:
+                            mode = Cesium.PositionMode.Contains;
+                            break;
+                        default:
+                            break;
+                    }
+                    spatialQuery.positionMode = mode;
+                });
+
+                $("#geometryType").on("input change", function () {
+                    index = document.getElementById("geometryType").selectedIndex;
+                    changeMode(index);
+                    if (spatialQuery.geometry) {
+                        spatialQuery.geometry = geometry;
+                    }
+
+                });
+                //模型类型选择函数
+                var changeMode = function (index) {
+                    switch (index) {
+                        case 0: {
+                            var length = 100;
+                            var width = 100;
+                            var height = 100;
+                            geometry = new Cesium.GeoBox(length, width, height);
+                            geometry.geoPosition = pos;
+                        }
+                            break;
+                        case 1: {
+                            var r = 100;
+                            geometry = new Cesium.GeoSphere(r);
+                            geometry.geoPosition = pos;
+                        }
+                            break;
+                        case 2: {
+                            geometry = new Cesium.GeoCone(100, 200);
+                            geometry.geoPosition = pos;
+                        }
+                            break;
+                        case 3: {
+                            geometry = new Cesium.GeoCylinder(100, 100, 200);
+                            geometry.geoPosition = pos;
+                            // spatialQuery.geometry = geometry;
+                        }
+                            break;
+                        case 4: {
+                            geometry = new Cesium.GeoEllipsoid(100.0, 50.0, 50.0);
+                            geometry.geoPosition = pos;
+                        }
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                var viewModel = {
+                    scale: 1.0,
+                    pitch: 0.0,
+                    roll: 0.0,
+                    heading: 0.0
+                };
+                Cesium.knockout.track(viewModel);
+                var toolbar = document.getElementById('toolbar');
+                Cesium.knockout.applyBindings(viewModel, toolbar);
+                Cesium.knockout.getObservable(viewModel, 'scale').subscribe(
+                    function (newValue) {
+                        if (spatialQuery.geometry) {
+                            geometry.geoScaleX = parseFloat(newValue);
+                            geometry.geoScaleY = parseFloat(newValue);
+                            geometry.geoScaleZ = parseFloat(newValue);
+                        }
+                    }
+                );
+                Cesium.knockout.getObservable(viewModel, 'pitch').subscribe(
+                    function (newValue) {
+                        if (spatialQuery.geometry) {
+                            geometry.geoRotationY = parseFloat(newValue);
+                        }
+                    }
+                );
+
+                Cesium.knockout.getObservable(viewModel, 'roll').subscribe(
+                    function (newValue) {
+                        if (spatialQuery.geometry) {
+                            geometry.geoRotationX = parseFloat(newValue);
+                        }
+                    }
+                );
+
+                Cesium.knockout.getObservable(viewModel, 'heading').subscribe(
+                    function (newValue) {
+                        if (spatialQuery.geometry) {
+                            geometry.geoRotationZ = parseFloat(newValue);
+                        }
+                    }
+                );
+            }, function (e) {
+                if (widget._showRenderLoopErrors) {
+                    var title = '加载SCP失败，请检查网络连接状态或者url地址是否正确？';
+                    widget.showErrorPanel(title, undefined, e);
+                }
+            });
+
+        } catch (e) {
+            if (widget._showRenderLoopErrors) {
+                var title = '渲染时发生错误，已停止渲染。';
+                widget.showErrorPanel(title, undefined, e);
+            }
+        }
+        //关闭操作框
+        $(".close2").click(function () {
+            $("#toolbar").hide();
+            $("#bn").show()
+        });
+        $("#bn").click(function () {
+            $("#toolbar").show();
+            $("#bn").hide()
+        });
+        $('#loadingbar').remove();
+        $("#toolbar").show();
+    }
+</script>
+</body>
+</html>

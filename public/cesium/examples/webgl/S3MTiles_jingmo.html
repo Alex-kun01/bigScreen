@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>CBD</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <script src="./js/config.js"></script>
+    <link href="./css/pretty.css" rel="stylesheet">
+    <script src="./js/jquery.min.js"></script>
+    <script type="text/javascript" src="./js/require.min.js" data-main="js/main"></script>
+    <style>
+        .min-solider {
+            background: rgba(51, 51, 51, 1);
+            border: 1px solid rgba(60, 141, 188, 1);
+            color: #ffffff;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div id="tool-bar" class="param-container tool-bar">
+    <label style="color: #FFFFFF" for="circulation">循环旋转</label>
+    <input type="checkbox" id="circulation" checked = true>&nbsp&nbsp&nbsp
+    <button id="start" class="button black">点选旋转</button>&nbsp&nbsp&nbsp
+    <button id="stop" class="button black">停止旋转</button>
+    <div class="middlebox">
+        <label class="label-container">旋转速度 </label>
+        <input id="speedRatio" style="width:40%" class="min-solider" type="range" value="1" min="0" max="50" step="0.1"/>
+        <input  id="speedNum"  style="width:20%; height:20px;margin-left: 20px" class="min-solider" value="1" type="number"  max="50"  min="0"  step="0.1" />
+    </div>
+</div>
+<script type="text/javascript">
+    /*示范代码说明：
+     *选取一个点作为中心点，并以此做旋转
+     *
+     *主要涉及接口：
+     * camera.flyCircle
+     * camera.flyCircleLoop
+     * camera.stopFlyCircle
+     * 示范代码：
+   */
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer');
+        viewer.imageryLayers.addImageryProvider(new Cesium.BingMapsImageryProvider({
+            url : 'https://dev.virtualearth.net',
+            mapStyle : Cesium.BingMapsStyle.AERIAL,
+            key : URL_CONFIG.BING_MAP_KEY
+        }));
+        var scene = viewer.scene;
+        scene.shadowMap.darkness = 1.275; //设置第二重烘焙纹理的效果（明暗程度）
+        scene.skyAtmosphere.brightnessShift=0.4;  //修改大气的亮度
+        scene.debugShowFramesPerSecond = true;
+        scene.hdrEnabled = false;
+        scene.sun.show = false;
+        // 01设置环境光的强度-新处理CBD场景
+        scene.lightSource.ambientLightColor = new Cesium.Color(0.65, 0.65, 0.65, 1);
+        // 添加光源
+        var position1 = new Cesium.Cartesian3.fromDegrees(116.261209157595,  39.3042238956531, 480);
+        //光源方向点
+
+        var targetPosition1 = new Cesium.Cartesian3.fromDegrees(116.261209157595, 39.3042238956531,430);
+        var dirLightOptions = {
+            targetPosition: targetPosition1,
+            color: new Cesium.Color(1.0, 1.0, 1.0, 1),
+            intensity: 0.55
+        };
+        directionalLight_1 = new Cesium.DirectionalLight(position1, dirLightOptions);
+        scene.addLightSource(directionalLight_1);
+        var widget = viewer.cesiumWidget;
+        try{
+            var promise = scene.open(URL_CONFIG.SCENE_CBD);
+            Cesium.when(promise,function(layer){
+                var camera = scene.camera;
+                camera.flyCircleLoop = true; // 相机绕点旋转开启循环模式
+                camera.speedRatio= Number($('#speedRatio').val()) //旋转速度
+                var center = new Cesium.Cartesian3(0,0,0);
+                var handlerPoint = new Cesium.DrawHandler(viewer,Cesium.DrawMode.Point);
+                handlerPoint.drawEvt.addEventListener(function(result){
+                    center = result.object.position;
+
+                    camera.flyCircle(center); // 相机绕中心点旋转
+                });
+                $('#start').click(function(){
+                    handlerPoint.activate();
+                });
+                $('#circulation').on("input propertychange",function(){
+                    camera.flyCircleLoop = this.checked; // 设置绕点旋转是否循环
+                });
+                $("#stop").click(function() {
+                   camera.stopFlyCircle(); // 停止相机绕中心点旋转
+                });
+
+                $("#speedRatio").bind('input propertychange', function() {
+                    let spd = Number($('#speedRatio').val())
+                    camera.speedRatio = spd
+                    $("#speedNum").val(spd);
+                })
+                $("#speedNum").bind('input propertychange', function() {
+                    let spd = Number($('#speedNum').val())
+                    camera.speedRatio = spd
+                    $("#speedRatio").val(spd);
+                })
+            },function(e){
+                if (widget._showRenderLoopErrors) {
+                    var title = '加载SCP失败，请检查网络连接状态或者url地址是否正确？';
+                    widget.showErrorPanel(title, undefined, e);
+                }
+            });
+        }
+        catch(e){
+            if (widget._showRenderLoopErrors) {
+                var title = '渲染时发生错误，已停止渲染。';
+                widget.showErrorPanel(title, undefined, e);
+            }
+        }
+
+    }
+</script>
+</body>
+</html>

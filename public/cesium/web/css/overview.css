@@ -1,0 +1,285 @@
+/* Function Table*/
+table {
+    border-collapse: collapse;
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+table th {
+    padding: 5px;
+    text-align: center;
+}
+
+table thead th {
+    background: #eee;
+    padding: 0;
+}
+
+.table > tbody > tr > th {
+    vertical-align: middle;
+    padding: 0;
+    border: 1px solid #e6e6e6;
+}
+
+.table > thead:first-child > tr:first-child > th {
+    background: rgba(60, 141, 188, 0.6);
+    font-size: 16px;
+    color: #333;
+}
+
+.table > tbody > tr > td {
+    text-align: center;
+    vertical-align: middle;
+    margin: 0;
+    padding: 0;
+    font-size: 12px;
+}
+
+.table > tbody > tr.warning > td {
+    background-color: inherit;
+}
+
+.table > tbody > tr.mainTr.warning > td {
+    padding: 5px;
+    font-weight: bold;
+    font-size: 14px;
+    background-color: #eee;
+    color: #555
+}
+
+.mainTr:hover {
+    filter: saturate(0.9) brightness(0.9);
+    -webkit-filter: saturate(1) brightness(0.9);
+    cursor: pointer
+}
+
+.table.in {
+    margin-bottom: 0;
+    background-color: #f4f4f4;
+}
+
+.table.in > thead:first-child > tr:first-child > th {
+    background: #f4f4f4;
+    font-size: 14px;
+    text-align: center;
+    color: #e14d57;
+    border: 0;
+}
+
+.table.in > thead > tr > th {
+    width: 25%;
+}
+
+.table.in > tbody tr td {
+    padding: 0;
+}
+
+.table > tbody > tr.warning > td.function_yes {
+    background-color: #44ab44;
+    color: #fff;
+}
+
+.table > tbody > tr.warning > td.function_yesHalf {
+    background-color: hsl(32, 74%, 50%);
+    color: #fff;
+}
+
+.table > tbody > tr.warning > td.function_no {
+    background-color: #e11;
+    color: #fff;
+}
+
+.tb tr:hover {
+    background-color: #ddd;
+}
+
+.sgtr:hover {
+    background-color: #ddd;
+}
+
+/* Function Table End*/
+
+/* Browser Table*/
+.table > tbody > tr > td {
+    text-align: center;
+    vertical-align: middle;
+    border: 1px solid #e6e6e6;
+    margin: 0;
+    padding: 5px;
+}
+
+#browserTable tr:hover td,
+#browserTable td.hover {
+    filter: saturate(0.8) brightness(0.8);
+    -webkit-filter: saturate(0.8) brightness(0.8);
+}
+
+#browserTable .productName {
+    background: #eee;
+    font-weight: bold;
+    color: #555;
+    font-size: 14px;
+}
+
+td.browser_yes {
+    background-color: rgba(68, 171, 68, 1);
+    color: #fff;
+    margin-top: 20px;
+}
+
+td.browser_no {
+    background-color: #e11;
+    color: #fff;
+}
+
+th.lib_name {
+    width: 25%;
+    color: #0f0f0f;
+    background-color: rgb(238, 238, 238) !important;
+    font-size: 12px !important;
+}
+
+td.browser_version {
+    width: 25%;
+    font-size: 12px !important;
+}
+
+.table > thead > tr > th {
+    vertical-align: middle;
+    border: 2px solid #e6e6e6;
+    color: #555;
+}
+
+/* Browser Table End*/
+
+/*plugins Table*/
+.secondTr {
+    background-color: #f4f4f4;
+}
+
+.secondTr:hover {
+    background-color: rgba(60, 141, 188, 0.5);
+}
+
+.plugs-logo {
+    height: 24px;
+}
+
+#plugsTable tbody tr:hover {
+    background: #ddd;
+}
+
+/*plugins Table End*/
+
+/*license Table*/
+#licenseTable tbody tr:hover {
+    background: #ddd;
+}
+
+#licenseTable p {
+    margin: 0;
+}
+
+.licenseLink {
+    color: rgba(68, 171, 68, 1);
+}
+
+/*license Table END*/
+
+/*choice Table*/
+#choiceTable .indexName {
+    font-weight: bold;
+}
+
+#choiceTable p {
+    margin: 0;
+}
+
+/*choice Table END*/
+
+/* span */
+span.chromeIcon {
+    content: url(../img/overview/chrome_24px.png);
+}
+
+span.firefoxIcon {
+    content: url(../img/overview/firefox_24px.png);
+}
+
+span.ieIcon {
+    content: url(../img/overview/ie_24px.png);
+}
+
+span.operaIcon {
+    content: url(../img/overview/opera_24px.png);
+}
+
+span.safariIcon {
+    content: url(../img/overview/safari_24px.png);
+}
+
+/* span End*/
+
+/*check*/
+.check_big {
+    font-weight: bold;
+    font-size: 20px;
+    color: rgba(68, 171, 68, 1);
+}
+
+.checkHalf_big {
+    font-weight: bold;
+    font-size: 20px;
+    color: orange;
+}
+
+.error_big {
+    font-weight: bold;
+    font-size: 20px;
+}
+
+.table > tbody > tr.mainTr.warning > td.check_big {
+    font-weight: bold;
+    font-size: 20px;
+    color: rgba(68, 171, 68, 1);
+}
+
+.table > tbody > tr.mainTr.warning > td.checkHalf_big {
+    font-weight: bold;
+    font-size: 20px;
+    color: orange;
+}
+
+.table > tbody > tr.mainTr.warning > td.error_big {
+    font-weight: bold;
+    font-size: 20px;
+}
+
+.table.in > tbody tr td.check_small {
+    font-weight: bold;
+    font-size: 14px;
+    color: rgba(68, 171, 68, 1);
+    width: 18.8%;
+}
+
+.table > tbody > tr > td.error_small {
+    font-size: 15px;
+    width: 18.8%;
+}
+
+.table > tbody > tr > td.check_small {
+    color: rgba(68, 171, 68, 1);
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/*check End*/
+
+a:hover {
+    color: #23527c;
+}
+
+.img-fluid {
+    max-width: 100%;
+    height: auto;
+}

@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>MVT</title>
+    <link href="../../Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+    <link href="./css/pretty.css" rel="stylesheet">
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <script src="./js/tooltip.js"></script>
+    <script src="./js/config.js"></script>
+    <script type="text/javascript" src="../../Build/Cesium/Cesium.js"></script>
+</head>
+<body>
+<div id="cesiumContainer">
+</div>
+
+<div id='loadingbar' class="spinner">
+    <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+    <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+    </div>
+</div>
+
+<div id='toolbar' class="param-container tool-bar">
+    <div class="param-item">
+        <button type="button" id="addMap" class="button black">添加</button>
+        <button type="button" id="visibleMap" class="button black">隐藏</button>
+        <button type="button" id="refresh" class="button black">刷新</button>
+        <button type="button" id="removeMap" class="button black">移除</button>
+        <br>
+
+        <b>透明度：</b>
+        <input type="range" id="layerAlpha" min="0.0" max="1.0" value="1.0" step="0.01"
+               style="margin-left:15px;width: 200px">
+    </div>
+
+    <div class="param-item">
+        <b>选择图层：</b>
+        <select id="layersList" class="form-control" style="width: 200px">
+
+        </select>
+    </div>
+
+    <div class="param-item">
+        <button type="button" id="changeLayerStyle" class="button black">修改图层风格</button>
+        <button type="button" id="changeFeatureStyle" class="button black" style="margin-left: 30px">修改对象风格</button>
+        <br>
+
+        <button type="button" id="hideLayer" class="button black" style="width:116px">隐藏图层</button>
+        <button type="button" id="hideFeature" class="button black" style="margin-left: 30px;width:116px">隐藏对象</button>
+        <br>
+
+        <button type="button" id="attributeQuery" class="button black" style="width:116px">属性查询</button>
+        <button type="button" id="spatialQuery" class="button black" style="margin-left: 30px;width:116px">空间查询</button>
+        <br>
+    </div>
+
+</div>
+
+
+<!-- 气泡HTML -->
+<div id="bubble" class="bubble" style="overflow: auto; bottom:0;left:82%;display:none;border: #666 1px solid">
+    <div id="tools" style="text-align : right">
+        <span style="color: rgb(95, 74, 121);padding: 5px;position: absolute;left: 10px;top: 4px;">对象属性</span>
+        <span class="fui-export" id="bubblePosition" style="color: darkgrey; padding:5px" title="停靠"></span>
+        <span class="fui-cross" title="关闭" id="close" style="color: darkgrey;padding:5px"></span>
+    </div>
+    <div style="overflow-y:auto;" id="tableContainer">
+        <table id="tab" style="height: 100px;"></table>
+    </div>
+</div>
+
+
+<script>
+    function onload(Cesium) {
+        var viewer = new Cesium.Viewer('cesiumContainer', {
+            contextOptions: {
+                msaaLevel: 4,
+                requestWebgl2: true
+            },
+            orderIndependentTranslucency: false
+        });
+
+        window.viewer = viewer;
+        window.scene = viewer.scene;
+        viewer.scene.debugShowFramesPerSecond = true;
+
+        var infoboxContainer = document.getElementById("bubble");
+        viewer.customInfobox = infoboxContainer;
+
+        viewer.scene.globe.show = true;
+        viewer.scene.postProcessStages.fxaa.enabled = false;
+
+        var scene = viewer.scene;
+
+        var tooltip = createTooltip(document.body);
+
+        var url = "http://www.supermapol.com/realspace/services/map-mvt-JingJinDiQuDiTu/restjsr/v1/vectortile/maps/%E4%BA%AC%E6%B4%A5%E5%9C%B0%E5%8C%BA%E5%9C%B0%E5%9B%BE";
+
+        var mvtMap;
+        // var mvtLayer;
+        var selectLayer;//选择图层
+        var highlightLayers = {};//高亮图层
+
+
+        $('#loadingbar').remove();
+
+
+        //添加
+        $("#addMap").on("click", function () {
+            mvtMap = scene.addVectorTilesMap({
+                url: url,
+                canvasWidth: 512,
+                name: 'testMVT',
+                viewer: viewer
+            });
+
+            //定位至图层范围
+            var layerReadyPromise = mvtMap.readyPromise;
+            Cesium.when(layerReadyPromise, function (data) {
+                var bounds = mvtMap.rectangle;
+                scene.camera.setView({
+                    destination: new Cesium.Cartesian3.fromRadians((bounds.east + bounds.west) * 0.5, (bounds.north + bounds.south) *
+                        0.5, 10000),
+                    orientation: {
+                        heading: 0,
+                        roll: 0
+                    }
+                });
+
+                //获取mvt的所有图层
+                $('#layersList').empty();//先清空options
+
+                var menu = document.getElementById('layersList');
+                var mapboxStyle = mvtMap.mapboxStyle;
+                for (var id in mapboxStyle.layers) {
+                    var layer = mapboxStyle.layers[id];
+
+                    var option = document.createElement('option');
+                    option.innerHTML = layer.id;
+                    option.value = parseInt(id);
+                    menu.appendChild(option);
+                }
+
+                //指定选择图层
+                if (mapboxStyle.layers.length > 4) {
+                    $('#layersList').val(4);//图层索引为0
+                    $('#layersList').trigger("change");
+                    if (!selectLayer) {
+                        selectLayer = mapboxStyle.layers[4];
+                    }
+                } else {
+                    $('#layersList').val(0);//图层索引为0
+                    $('#layersList').trigger("change");
+                    if (!selectLayer) {
+                        selectLayer = mapboxStyle.layers[0];
+                    }
+                }
+
+            });
+        });
+
+
+        //点击，弹出属性
+        viewer.selectedEntityChanged.addEventListener(function (entity) {
+            if (!spatialFlag) {
+                $("#bubble").hide();
+
+                var selectedEntity = viewer.selectedEntity;
+                if (!Cesium.defined(selectedEntity) || !Cesium.defined(selectedEntity.pickResult)) {
+                    return;
+                }
+                var pickResult = selectedEntity.pickResult;
+                var properties = null;
+
+                for (var obj in pickResult) {
+                    var pickFeature = pickResult[obj][0].feature;
+                    properties = pickFeature.properties;
+                    break;
+                }
+
+                if (!properties) {
+                    return;
+                }
+
+                for (i = table.rows.length - 1; i > -1; i--) {
+                    table.deleteRow(i);
+                }
+                $("#bubble").show();
+
+                var newRow = table.insertRow();
+                var cell1 = newRow.insertCell();
+                var cell2 = newRow.insertCell();
+                cell1.innerHTML = "<b style='font-size: 1.00rem;'>属性</b>";
+                cell2.innerHTML = "<b style='font-size: 1.00rem;'>值</b>";
+
+                //添加图层和id信息
+                var newRow = table.insertRow();
+                var cell1 = newRow.insertCell();
+                var cell2 = newRow.insertCell();
+                cell1.innerHTML = "图层";
+                cell2.innerHTML = selectedEntity.layerID;
+
+                newRow = table.insertRow();
+                var cell1 = newRow.insertCell();
+                var cell2 = newRow.insertCell();
+                cell1.innerHTML = "ID";
+                cell2.innerHTML = selectedEntity.id;
+
+                for (var key in properties) {
+                    var newRow = table.insertRow();
+                    var cell1 = newRow.insertCell();
+                    var cell2 = newRow.insertCell();
+                    cell1.innerHTML = key;
+                    cell2.innerHTML = properties[key];
+                }
+            }
+        });
+
+        $('#layersList').on("change", function () {
+            var index = parseInt($(this).val()); // 图层的索引
+
+            var temp = mvtMap.mapboxStyle;
+            selectLayer = temp.layers[index];
+        });
+
+
+        $("#visibleMap").on("click", function () {
+            mvtMap.show = !mvtMap.show;
+        });
+
+        //修改图层风格
+        $("#changeLayerStyle").on("click", function () {
+                var mapboxStyle = mvtMap.mapboxStyle;
+
+                // 修改颜色
+                if (selectLayer) {
+                    switch (selectLayer.type) {
+                        case "fill":
+                            mvtMap.setPaintProperty(selectLayer.id, "fill-color", "rgba(255,0,0,0.8)");
+                            break;
+                        case "line":
+                            mvtMap.setPaintProperty(selectLayer.id, "line-color", "rgba(255,0,0,1.00)");
+                            break;
+                        // case "symbol":
+                        //     mvtMap.setPaintProperty(selectLayer.id, "circle-color", "rgba(255,0,0,1.00)");
+                        //     break;
+                    }
+                }
+            }
+        );
+
+        //修改要素风格
+        $("#changeFeatureStyle").on("click", function () {
+            // 创建填充临时图层
+            var layerSetting = selectLayer;
+            var highlightLayerID = selectLayer.id + "_highlight";
+            var highlightLayer = highlightLayers[highlightLayerID];
+            if (!Cesium.defined(highlightLayer)) {
+                var highlightLayerSetting = Cesium.clone(layerSetting, true);
+                highlightLayerSetting.id = highlightLayerID;
+                if (selectLayer.type == "line") { // 线
+                    highlightLayerSetting.paint["line-width"] = 2.0;
+                    highlightLayerSetting.paint["line-color"] = "rgba(255,0,0,1.00)";
+                } else if (selectLayer.type == "fill") { // 面
+                    highlightLayerSetting.paint["fill-color"] = "rgba(255,0,0,1.00)";
+                }
+                mvtMap.addLayer(highlightLayerSetting);
+                // 设置过滤条件，只显示图层中ID=1的要素
+                mvtMap.setFilter(highlightLayerSetting.id, ["in", "$id", 1]);
+
+                highlightLayers[highlightLayerID] = true;
+            }
+        });
+
+        //过滤图层显示
+        $("#hideLayer").on("click", function () {
+            var tt = mvtMap.getLayoutProperty(selectLayer.id, 'visibility');
+            if (mvtMap.getLayoutProperty(selectLayer.id, 'visibility') === "visible") {
+                mvtMap.setLayoutProperty(selectLayer.id, 'visibility', 'none');//隐藏某个图层
+            } else {
+                mvtMap.setLayoutProperty(selectLayer.id, 'visibility', 'visible');//隐藏某个图层
+            }
+        });
+
+        //过滤要素显示
+        $("#hideFeature").on("click", function () {
+            //仅显示图层中 id=1 的要素
+            mvtMap.setFilter(selectLayer.id, ["==", "$id", 3]);
+            // mvtMap.setFilter(selectLayer.id, ["in", "SmUserID", 46, 48]);
+            // mvtMap.setFilter(selectLayer.id, ["==", "NAME", "鄱阳湖"])
+        });
+
+
+        //属性查询
+        $("#attributeQuery").on("click", function () {
+            var mapboxStyle = mvtMap.mapboxStyle;
+
+            var result = mvtMap.querySourceFeatures({
+                sourceLayer: selectLayer.id,
+                filter: ["==", "$id", 1],
+            });
+            if (result.length > 0) {
+                var properties = result[0].properties
+                if (!properties) {
+                    return;
+                }
+
+                for (i = table.rows.length - 1; i > -1; i--) {
+                    table.deleteRow(i);
+                }
+                $("#bubble").show();
+
+                var newRow = table.insertRow();
+                var cell1 = newRow.insertCell();
+                var cell2 = newRow.insertCell();
+                cell1.innerHTML = "<b style='font-size: 1.00rem;'>属性</b>";
+                cell2.innerHTML = "<b style='font-size: 1.00rem;'>值</b>";
+
+
+                for (var key in properties) {
+                    var newRow = table.insertRow();
+                    var cell1 = newRow.insertCell();
+                    var cell2 = newRow.insertCell();
+                    cell1.innerHTML = key;
+                    cell2.innerHTML = properties[key];
+                }
+            }
+        });
+
+        //空间查询
+        var spatialFlag = false;
+        $("#spatialQuery").on("click", function () {
+            spatialFlag = true;
+            if (handlerPolygon.active) {
+                handlerPolygon.deactivate();
+            } else {
+                handlerPolygon.activate();
+            }
+        });
+
+        var handlerPolygon = new Cesium.DrawHandler(viewer, Cesium.DrawMode.Polygon, 0);
+        handlerPolygon.activeEvt.addEventListener(function (isActive) {
+            if (isActive == true) {
+                viewer.enableCursorStyle = false;
+                viewer._element.style.cursor = '';
+                $('body').removeClass('drawCur').addClass('drawCur');
+            } else {
+                viewer.enableCursorStyle = true;
+                $('body').removeClass('drawCur');
+            }
+        });
+        handlerPolygon.movingEvt.addEventListener(function (windowPosition) {
+            if (handlerPolygon.isDrawing) {
+                tooltip.showAt(windowPosition, '<p>绘制相交区域(右键结束绘制)</p>');
+            }
+        });
+
+        handlerPolygon.drawEvt.addEventListener(function (result) {
+            tooltip.setVisible(false);
+            queryFeatures(result.object.positions);
+        });
+
+        var queryFeatures = function (positions) {
+            if (mvtMap) {
+                // var features = mvtMap.queryRenderedFeatures(positions);
+
+                //查询出相交图层的feature
+                var features = mvtMap.queryRenderedFeatures(positions, {
+                    layers: [selectLayer.id]
+                });
+
+                var layerSetting = selectLayer;
+                var highlightLayerID = selectLayer.id + "_highlight";
+                var highlightLayer = highlightLayers[highlightLayerID];
+                if (!Cesium.defined(highlightLayer)) {
+                    var highlightLayerSetting = Cesium.clone(layerSetting, true);
+                    highlightLayerSetting.id = highlightLayerID;
+                    if (selectLayer.type == "line") { // 线
+                        highlightLayerSetting.paint["line-width"] = 2.0;
+                        highlightLayerSetting.paint["line-color"] = "rgba(255,0,0,1.00)";
+                    } else if (selectLayer.type == "fill") { // 面
+                        highlightLayerSetting.paint["fill-color"] = "rgba(0,255,255,1.00)";
+                    }
+                    mvtMap.addLayer(highlightLayerSetting);
+                    highlightLayers[highlightLayerID] = true;
+                }
+
+
+                var filter = features.reduce(function (memo, feature) {
+                    memo.push(feature.feature.id);
+                    return memo;
+                }, ["in", "$id"]);
+                mvtMap.setFilter(highlightLayerID, filter);
+            }
+        };
+
+
+        $("#refresh").on("click", function () {
+            mvtMap.refresh();
+        });
+
+        $("#layerAlpha").on("input change", function () {
+            mvtMap.alpha = parseFloat(this.value);
+        });
+
+        $("#removeMap").on("click", function () {
+            spatialFlag = false;
+            if (mvtMap) {
+                scene.removeVectorTilesMap(mvtMap.name);
+            }
+
+            handlerPolygon.deactivate();
+            if (handlerPolygon.polygon) {
+                handlerPolygon.polygon.show = false;
+            }
+            if (handlerPolygon.polyline) {
+                handlerPolygon.polyline.show = false;
+            }
+        });
+
+
+        /* 气泡相关 1/4 start */
+        var scenePosition = null; // 记录在场景中点击的笛卡尔坐标点
+        var dock = false; // 是否停靠
+        var infoboxContainer = document.getElementById("bubble");
+        var table = document.getElementById("tab"); // 气泡内的表格
+        $("#bubblePosition").click(function () { // 停靠状态切换
+            dock = !dock;
+            if ($("#bubblePosition").hasClass("fui-export")) {
+                $("#bubble").removeClass("bubble").addClass("float");
+                $("#bubblePosition").removeClass("fui-export").addClass("fui-bubble");
+                $("#bubblePosition")[0].title = "悬浮";
+                $("#bubble").css({
+                    'left': '82%',
+                    'bottom': '45%'
+                });
+                $("#tableContainer").css({
+                    'height': '350px'
+                });
+            } else if ($("#bubblePosition").hasClass("fui-bubble")) {
+                $("#bubble").removeClass("float").addClass("bubble");
+                $("#bubblePosition").removeClass("fui-bubble").addClass("fui-export");
+                $("#bubblePosition")[0].title = "停靠";
+                $("#tableContainer").css({
+                    'height': '150px'
+                });
+            }
+        });
+        $("#close").click(function () { // 关闭气泡
+            $("#bubble").hide();
+        });
+        scene.postRender.addEventListener(function () { // 每一帧都去计算气泡的正确位置
+            if (scenePosition && !dock) {
+                var canvasHeight = scene.canvas.height;
+                var windowPosition = new Cesium.Cartesian2();
+                Cesium.SceneTransforms.wgs84ToWindowCoordinates(scene, scenePosition, windowPosition);
+                infoboxContainer.style.bottom = (canvasHeight - windowPosition.y + 45) + 'px';
+                infoboxContainer.style.left = (windowPosition.x - 70) + 'px';
+                infoboxContainer.style.visibility = "visible";
+            }
+        });
+        /* 气泡相关 1/4 end */
+
+        /* 气泡相关 2/4 */
+        var handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+        handler.setInputAction(function (e) {
+            // 获取点击位置笛卡尔坐标
+            var cameraPosition = scene.camera.position;
+            // 获取点击位置笛卡尔坐标
+            var position = scene.pickPosition(e.position);
+            scenePosition = position; // 气泡相关 2/4
+        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+
+        /* 气泡相关 3/4 start */
+        scenePosition = null;
+        $("#bubble").hide();
+        /* 气泡相关 3/4 end */
+
+    }
+
+    if (typeof Cesium !== 'undefined') {
+        window.startupCalled = true;
+        onload(Cesium);
+    }
+</script>
+</body>
+</html>
